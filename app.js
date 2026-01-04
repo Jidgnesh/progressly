@@ -26,6 +26,16 @@ const Icon = ({ name, size = 24, className = '', color }) => {
 };
 
 // ============================================
+// LOGO COMPONENT
+// ============================================
+const Logo = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
+    <path d="M14 24 C14 18 8 18 8 24 C8 30 14 30 14 24 C14 18 24 18 24 24 C24 30 34 30 34 24 C34 18 40 18 40 24 C40 30 34 30 34 24" stroke="white" strokeWidth="4" strokeLinecap="round" strokeOpacity="0.3"/>
+    <path d="M14 24 C14 18 8 18 8 24 C8 30 14 30 14 24 C14 18 24 18 24 24" stroke="white" strokeWidth="4" strokeLinecap="round"/>
+  </svg>
+);
+
+// ============================================
 // HELPER FUNCTIONS
 // ============================================
 const getProgressColor = (p) => {
@@ -238,7 +248,10 @@ function App() {
       <div className="min-h-screen bg-slate-900 text-white pb-24">
         {/* Header */}
         <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 pt-8 pb-6">
-          <h1 className="text-2xl font-bold mb-1">Monthly Progress</h1>
+          <div className="flex items-center gap-2 mb-1">
+            <Logo size={24} />
+            <h1 className="text-2xl font-bold">Progressly</h1>
+          </div>
           <p className="text-violet-200 text-sm">View progress across all months</p>
         </div>
 
@@ -327,8 +340,11 @@ function App() {
       
       {/* Header */}
       <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 pt-8 pb-6">
-        <h1 className="text-2xl font-bold mb-1">Progressly</h1>
-        <p className="text-violet-200 text-sm">Track tasks & subtasks</p>
+        <div className="flex items-center gap-2 mb-1">
+          <Logo size={24} />
+          <h1 className="text-2xl font-bold">Progressly</h1>
+        </div>
+        <p className="text-violet-200 text-sm">Keep moving forward !</p>
       </div>
 
       {/* Month Navigator */}

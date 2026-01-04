@@ -3,9 +3,9 @@
 // ============================================
 const PRIORITIES = { high: '#ef4444', medium: '#f59e0b', low: '#22c55e' };
 const CATEGORIES = ['Work', 'Personal', 'Health', 'Learning', 'Other'];
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 
-                'July', 'August', 'September', 'October', 'November', 'December'];
-const STORAGE_KEY = 'planner-tasks-v4';
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const STORAGE_KEY = 'planner-tasks-v5';
 
 // ============================================
 // ICON COMPONENT
@@ -51,11 +51,12 @@ const getTaskProgress = (task) => {
 // ============================================
 function App() {
   const { useState, useEffect } = React;
-  
+  const today = new Date();
+
   // State
   const [tasks, setTasks] = useState([]);
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [showAdd, setShowAdd] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', priority: 'medium', category: 'Work' });
   const [loading, setLoading] = useState(true);
@@ -64,13 +65,35 @@ function App() {
   const [expandedSubtask, setExpandedSubtask] = useState(null);
   const [addingSubtaskTo, setAddingSubtaskTo] = useState(null);
   const [newSubtask, setNewSubtask] = useState('');
+  const [currentPage, setCurrentPage] = useState('home');
 
   // Load tasks on mount
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) setTasks(JSON.parse(saved));
+    let saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      let loadedTasks = JSON.parse(saved);
+      loadedTasks = migrateIncompleteTasks(loadedTasks);
+      setTasks(loadedTasks);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedTasks));
+    }
     setLoading(false);
   }, []);
+
+  // Migrate incomplete tasks from past months to current month
+  const migrateIncompleteTasks = (taskList) => {
+    const nowMonth = today.getMonth();
+    const nowYear = today.getFullYear();
+    
+    return taskList.map(task => {
+      const taskProgress = getTaskProgress(task);
+      const isPast = task.year < nowYear || (task.year === nowYear && task.month < nowMonth);
+      
+      if (isPast && taskProgress < 100) {
+        return { ...task, month: nowMonth, year: nowYear, migratedFrom: { month: task.month, year: task.year } };
+      }
+      return task;
+    });
+  };
 
   // Save tasks
   const saveTasks = (newTasks) => {
@@ -150,6 +173,29 @@ function App() {
     setCurrentYear(y);
   };
 
+  // Get all months that have tasks
+  const getMonthsWithTasks = () => {
+    const monthsMap = {};
+    tasks.forEach(task => {
+      const key = `${task.year}-${task.month}`;
+      if (!monthsMap[key]) {
+        monthsMap[key] = { month: task.month, year: task.year, tasks: [] };
+      }
+      monthsMap[key].tasks.push(task);
+    });
+    return Object.values(monthsMap).sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      return b.month - a.month;
+    });
+  };
+
+  const getMonthStats = (monthTasks) => {
+    const total = monthTasks.length;
+    const completed = monthTasks.filter(t => getTaskProgress(t) === 100).length;
+    const avgProgress = total > 0 ? Math.round(monthTasks.reduce((s, t) => s + getTaskProgress(t), 0) / total) : 0;
+    return { total, completed, avgProgress };
+  };
+
   // Computed values
   const monthTasks = tasks.filter(t => t.month === currentMonth && t.year === currentYear);
   const completedCount = monthTasks.filter(t => getTaskProgress(t) === 100).length;
@@ -171,6 +217,10 @@ function App() {
     return { high: 0, medium: 1, low: 2 }[a.priority] - { high: 0, medium: 1, low: 2 }[b.priority];
   });
 
+  const isCurrentMonth = currentMonth === today.getMonth() && currentYear === today.getFullYear();
+  const monthsWithTasks = getMonthsWithTasks();
+  const allTasksProgress = tasks.length > 0 ? Math.round(tasks.reduce((s, t) => s + getTaskProgress(t), 0) / tasks.length) : 0;
+
   // Loading state
   if (loading) {
     return (
@@ -180,7 +230,98 @@ function App() {
     );
   }
 
-  // Main render
+  // ============================================
+  // HISTORY PAGE
+  // ============================================
+  if (currentPage === 'history') {
+    return (
+      <div className="min-h-screen bg-slate-900 text-white pb-24">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 pt-8 pb-6">
+          <h1 className="text-2xl font-bold mb-1">Monthly Progress</h1>
+          <p className="text-violet-200 text-sm">View progress across all months</p>
+        </div>
+
+        {/* Overall Stats */}
+        <div className="mx-4 mt-4 bg-slate-800 rounded-2xl p-5">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-xl flex items-center justify-center relative">
+              <svg className="w-16 h-16 -rotate-90">
+                <circle cx="32" cy="32" r="28" stroke="#334155" strokeWidth="6" fill="none"/>
+                <circle cx="32" cy="32" r="28" stroke="url(#gradAll)" strokeWidth="6" fill="none" strokeDasharray={`${allTasksProgress * 1.76} 176`} strokeLinecap="round"/>
+                <defs><linearGradient id="gradAll" x1="0%" y1="0%" x2="100%"><stop offset="0%" stopColor="#8b5cf6"/><stop offset="100%" stopColor="#6366f1"/></linearGradient></defs>
+              </svg>
+              <span className="absolute text-sm font-bold">{allTasksProgress}%</span>
+            </div>
+            <div>
+              <div className="text-lg font-semibold">All Time Progress</div>
+              <div className="text-slate-400 text-sm">{tasks.length} total tasks • {monthsWithTasks.length} months</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Month Cards */}
+        <div className="px-4 mt-6">
+          <div className="text-sm text-slate-400 mb-3">All Months</div>
+          {monthsWithTasks.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3">
+              {monthsWithTasks.map(({ month, year, tasks: mTasks }) => {
+                const stats = getMonthStats(mTasks);
+                const isCurrent = month === today.getMonth() && year === today.getFullYear();
+                return (
+                  <div
+                    key={`${year}-${month}`}
+                    onClick={() => { setCurrentMonth(month); setCurrentYear(year); setCurrentPage('home'); }}
+                    className={`p-4 rounded-xl cursor-pointer transition-all ${isCurrent ? 'bg-violet-600 ring-2 ring-violet-400' : 'bg-slate-800 hover:bg-slate-700'}`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <div className="text-xs text-slate-400">{year}</div>
+                        <div className="text-lg font-bold">{MONTHS_FULL[month]}</div>
+                      </div>
+                      {isCurrent && <span className="text-xs bg-white/20 px-2 py-1 rounded">Current</span>}
+                    </div>
+                    <div className="mt-3 h-2 bg-slate-600 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${stats.avgProgress}%`, backgroundColor: getProgressColor(stats.avgProgress) }}/>
+                    </div>
+                    <div className="flex justify-between items-center mt-2">
+                      <span className="text-lg font-bold" style={{ color: getProgressColor(stats.avgProgress) }}>{stats.avgProgress}%</span>
+                      <span className="text-sm text-slate-400">{stats.completed}/{stats.total} done</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-slate-500">
+              <Icon name="Calendar" size={48} className="mx-auto opacity-50"/>
+              <p className="mt-3">No tasks yet</p>
+              <p className="text-sm">Add your first task to get started!</p>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 px-6 py-3">
+          <div className="flex justify-around items-center">
+            <button onClick={() => setCurrentPage('home')} className="flex flex-col items-center gap-1 text-slate-400">
+              <Icon name="Home" size={24}/>
+              <span className="text-xs">Home</span>
+            </button>
+            <div className="w-0.5 h-10 bg-slate-600 rounded-full"></div>
+            <button onClick={() => setCurrentPage('history')} className="flex flex-col items-center gap-1 text-violet-400">
+              <Icon name="History" size={24}/>
+              <span className="text-xs">History</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================
+  // HOME PAGE
+  // ============================================
   return (
     <div className="min-h-screen bg-slate-900 text-white pb-24" onClick={closeAll}>
       
@@ -196,8 +337,8 @@ function App() {
           <Icon name="ChevronLeft" size={24}/>
         </button>
         <div className="text-center">
-          <div className="text-xl font-bold">{MONTHS[currentMonth]}</div>
-          <div className="text-slate-400 text-sm">{currentYear}</div>
+          <div className="text-xl font-bold">{MONTHS_FULL[currentMonth]}</div>
+          <div className="text-slate-400 text-sm">{currentYear} {isCurrentMonth && <span className="text-violet-400">• Current</span>}</div>
         </div>
         <button onClick={(e) => { e.stopPropagation(); changeMonth(1); }} className="p-2 hover:bg-slate-700 rounded-full">
           <Icon name="ChevronRight" size={24}/>
@@ -298,10 +439,15 @@ function App() {
                     {/* Task Info */}
                     <div className="flex-1 min-w-0">
                       <p className={`font-medium ${taskProgress===100?'line-through text-slate-500':''}`}>{task.title}</p>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <span className="text-xs px-2 py-0.5 rounded-full" style={{backgroundColor:PRIORITIES[task.priority]+'22',color:PRIORITIES[task.priority]}}>{task.priority}</span>
                         <span className="text-xs text-slate-500">{task.category}</span>
                         {hasSubtasks && <span className="text-xs text-violet-400">{task.subtasks.length} subtasks</span>}
+                        {task.migratedFrom && (
+                          <span className="text-xs text-amber-400 flex items-center gap-1">
+                            <Icon name="ArrowRight" size={10}/> from {MONTHS[task.migratedFrom.month]}
+                          </span>
+                        )}
                       </div>
                     </div>
                     
@@ -443,13 +589,28 @@ function App() {
         )}
       </div>
 
-      {/* Add Button */}
+      {/* Add Task Button */}
       <button 
         onClick={(e) => { e.stopPropagation(); setShowAdd(true); }} 
-        className="fixed bottom-6 right-6 w-14 h-14 bg-violet-600 rounded-full flex items-center justify-center shadow-lg shadow-violet-600/30 hover:bg-violet-500"
+        className="fixed bottom-20 right-6 w-14 h-14 bg-violet-600 rounded-full flex items-center justify-center shadow-lg shadow-violet-600/30 hover:bg-violet-500"
       >
         <Icon name="Plus" size={28}/>
       </button>
+
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 px-6 py-3">
+        <div className="flex justify-around items-center">
+          <button onClick={() => setCurrentPage('home')} className="flex flex-col items-center gap-1 text-violet-400">
+            <Icon name="Home" size={24}/>
+            <span className="text-xs">Home</span>
+          </button>
+          <div className="w-0.5 h-10 bg-slate-600 rounded-full"></div>
+          <button onClick={() => setCurrentPage('history')} className="flex flex-col items-center gap-1 text-slate-400">
+            <Icon name="History" size={24}/>
+            <span className="text-xs">History</span>
+          </button>
+        </div>
+      </div>
 
       {/* Add Task Modal */}
       {showAdd && (

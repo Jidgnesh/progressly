@@ -1,21 +1,23 @@
 {
-  "name": "Plannerly",
-  "short_name": "Plannerly",
-  "start_url": "/plannerly/",
-  "scope": "/plannerly/",
+  "name": "Progressly",
+  "short_name": "Progressly",
+  "start_url": "/progressly/",
+  "scope": "/progressly/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4F46E5",
   "icons": [
     {
-      "src": "/plannerly/icon-192.png",
+      "src": "/progressly/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "/plannerly/icon-512.png",
+      "src": "/progressly/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

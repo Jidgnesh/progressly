@@ -1,7 +1,9 @@
-const CACHE_NAME = 'planner-v1';
+const CACHE_NAME = 'progressly-v1';
 const ASSETS = [
   '/',
   '/index.html',
+  '/styles.css',
+  '/app.js',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',

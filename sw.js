@@ -1,10 +1,15 @@
-const CACHE_NAME = 'progressly-v2';
+const CACHE_NAME = 'progressly-v3';
 const ASSETS = [
   '/progressly/',
   '/progressly/index.html',
+  '/progressly/styles.css',
   '/progressly/manifest.json',
   '/progressly/icon-192.png',
   '/progressly/icon-512.png',
+  '/progressly/js/constants.js',
+  '/progressly/js/utils.js',
+  '/progressly/js/components.js',
+  '/progressly/js/app.js',
   'https://unpkg.com/react@18/umd/react.production.min.js',
   'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
   'https://unpkg.com/@babel/standalone/babel.min.js',

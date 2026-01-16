@@ -127,7 +127,7 @@ const EditTaskModal = ({ editForm, setEditForm, onSave, onCancel }) => {
             ))}
           </div>
         </div>
-        <div className="mb-6">
+        <div className="mb-4">
           <label className="text-sm text-slate-400 mb-2 block">Priority</label>
           <div className="flex gap-2">
             {Object.entries(PRIORITIES).map(([k,c]) => (
@@ -141,6 +141,24 @@ const EditTaskModal = ({ editForm, setEditForm, onSave, onCancel }) => {
               </button>
             ))}
           </div>
+        </div>
+        <div className="mb-6">
+          <label className="text-sm text-slate-400 mb-2 block">Due Date (Optional)</label>
+          <input 
+            type="date" 
+            value={getDateInputValue(editForm.dueDate)} 
+            onChange={(e) => setEditForm({...editForm, dueDate: e.target.value || ''})} 
+            className="w-full bg-slate-700 rounded-xl px-4 py-3 outline-none text-white"
+            min={new Date().toISOString().split('T')[0]}
+          />
+          {editForm.dueDate && (
+            <button 
+              onClick={() => setEditForm({...editForm, dueDate: ''})} 
+              className="mt-2 text-xs text-red-400 hover:text-red-300"
+            >
+              Clear due date
+            </button>
+          )}
         </div>
         <button 
           onClick={onSave} 
@@ -187,7 +205,7 @@ const AddTaskModal = ({ newTask, setNewTask, onAdd, onCancel }) => {
             ))}
           </div>
         </div>
-        <div className="mb-6">
+        <div className="mb-4">
           <label className="text-sm text-slate-400 mb-2 block">Priority</label>
           <div className="flex gap-2">
             {Object.entries(PRIORITIES).map(([k,c]) => (
@@ -201,6 +219,24 @@ const AddTaskModal = ({ newTask, setNewTask, onAdd, onCancel }) => {
               </button>
             ))}
           </div>
+        </div>
+        <div className="mb-6">
+          <label className="text-sm text-slate-400 mb-2 block">Due Date (Optional)</label>
+          <input 
+            type="date" 
+            value={getDateInputValue(newTask.dueDate)} 
+            onChange={(e) => setNewTask({...newTask, dueDate: e.target.value || ''})} 
+            className="w-full bg-slate-700 rounded-xl px-4 py-3 outline-none text-white"
+            min={new Date().toISOString().split('T')[0]}
+          />
+          {newTask.dueDate && (
+            <button 
+              onClick={() => setNewTask({...newTask, dueDate: ''})} 
+              className="mt-2 text-xs text-red-400 hover:text-red-300"
+            >
+              Clear due date
+            </button>
+          )}
         </div>
         <button 
           onClick={onAdd} 
@@ -295,10 +331,12 @@ const TaskItem = ({
     );
   };
 
+  const overdue = task.dueDate && isOverdue(task.dueDate) && taskProgress < 100;
+  
   return (
     <div 
       onClick={(e) => e.stopPropagation()} 
-      className={`bg-slate-800 rounded-xl overflow-hidden ${taskProgress===100?'opacity-70':''}`}
+      className={`bg-slate-800 rounded-xl overflow-hidden ${taskProgress===100?'opacity-70':''} ${overdue?'ring-2 ring-red-500/50':''}`}
     >
       {/* Task Header */}
       <div className="p-4 flex items-center gap-3 cursor-pointer" onClick={onToggleExpand}>
@@ -316,6 +354,18 @@ const TaskItem = ({
             {task.migratedFrom && (
               <span className="text-xs text-amber-400 flex items-center gap-1">
                 <Icon name="ArrowRight" size={10}/> from {MONTHS[task.migratedFrom.month]}
+              </span>
+            )}
+            {task.dueDate && (
+              <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                isOverdue(task.dueDate) && taskProgress < 100 
+                  ? 'bg-red-500/20 text-red-400' 
+                  : isDueToday(task.dueDate)
+                  ? 'bg-orange-500/20 text-orange-400'
+                  : 'bg-blue-500/20 text-blue-400'
+              }`}>
+                <Icon name={isOverdue(task.dueDate) && taskProgress < 100 ? "AlertCircle" : "Calendar"} size={10}/>
+                {formatDate(task.dueDate)}
               </span>
             )}
           </div>

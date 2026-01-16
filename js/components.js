@@ -278,10 +278,22 @@ const TaskItem = ({
   onAddSubtask,
   onDeleteSubtask,
   onUpdateSubtaskProgress,
-  onToggleAddSubtask
+  onToggleAddSubtask,
+  searchQuery
 }) => {
   const taskProgress = getTaskProgress(task);
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+  
+  // Highlight search matches
+  const highlightText = (text, query) => {
+    if (!query || !text) return text;
+    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    return parts.map((part, i) => 
+      part.toLowerCase() === query.toLowerCase() 
+        ? React.createElement('mark', { key: i, className: 'bg-yellow-400/30 text-yellow-200 rounded px-0.5' }, part)
+        : part
+    );
+  };
 
   return (
     <div 
@@ -294,7 +306,9 @@ const TaskItem = ({
         
         {/* Task Info */}
         <div className="flex-1 min-w-0">
-          <p className={`font-medium ${taskProgress===100?'line-through text-slate-500':''}`}>{task.title}</p>
+          <p className={`font-medium ${taskProgress===100?'line-through text-slate-500':''}`}>
+            {searchQuery ? highlightText(task.title, searchQuery) : task.title}
+          </p>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className="text-xs px-2 py-0.5 rounded-full" style={{backgroundColor:PRIORITIES[task.priority]+'22',color:PRIORITIES[task.priority]}}>{task.priority}</span>
             <span className="text-xs text-slate-500">{task.category}</span>

@@ -24,7 +24,6 @@ function App() {
     const [editForm, setEditForm] = useState({ title: '', priority: 'medium', category: 'Personal', dueDate: '' });
     const [sortBy, setSortBy] = useState('priority'); // 'priority', 'dueDate', 'progress'
     const [searchQuery, setSearchQuery] = useState('');
-    const [showSearch, setShowSearch] = useState(false);
   
     // ==================== EFFECTS ====================
     useEffect(() => {
@@ -476,47 +475,10 @@ function App() {
         
         {/* Header */}
         <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 pt-8 pb-6">
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold">Progressly</h1>
-            </div>
-            <button 
-              onClick={(e) => { e.stopPropagation(); setShowSearch(!showSearch); setSearchQuery(''); }} 
-              className="p-2 hover:bg-white/20 rounded-full"
-            >
-              <Icon name={showSearch ? "X" : "Search"} size={24} color="white"/>
-            </button>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-2xl font-bold">Progressly</h1>
           </div>
-          {showSearch ? (
-            <div className="mt-3">
-              <div className="relative">
-                <Icon name="Search" size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"/>
-                <input
-                  type="text"
-                  placeholder="Search tasks..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white/20 backdrop-blur-sm rounded-xl pl-10 pr-4 py-3 text-white placeholder-white/70 outline-none focus:bg-white/30"
-                  autoFocus
-                />
-                {searchQuery && (
-                  <button 
-                    onClick={() => setSearchQuery('')} 
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/70 hover:text-white"
-                  >
-                    <Icon name="X" size={18}/>
-                  </button>
-                )}
-              </div>
-              {searchQuery && (
-                <p className="text-violet-200 text-xs mt-2">
-                  Found {searchedTasks.length} task{searchedTasks.length !== 1 ? 's' : ''} across all months
-                </p>
-              )}
-            </div>
-          ) : (
-            <p className="text-violet-200 text-sm">Keep moving forward !</p>
-          )}
+          <p className="text-violet-200 text-sm">Keep moving forward !</p>
         </div>
   
         {/* Month Navigator */}
@@ -565,8 +527,35 @@ function App() {
           </div>
         </div>
   
+        {/* Search Bar */}
+        <div className="px-4 mt-4" onClick={(e) => e.stopPropagation()}>
+          <div className="relative">
+            <Icon name="Search" size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"/>
+            <input
+              type="text"
+              placeholder="Search tasks..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-800 rounded-xl pl-10 pr-10 py-3 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-violet-500 focus:bg-slate-700"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')} 
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white"
+              >
+                <Icon name="X" size={18}/>
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <p className="text-slate-400 text-xs mt-2">
+              Found {searchedTasks.length} task{searchedTasks.length !== 1 ? 's' : ''} across all months
+            </p>
+          )}
+        </div>
+
         {/* Filter Tabs */}
-        <div className="flex gap-2 px-4 mt-4 overflow-x-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex gap-2 px-4 mt-3 overflow-x-auto" onClick={(e) => e.stopPropagation()}>
           {[['all','All'],['pending','To Do'],['inprogress','In Progress'],['completed','Done'],['overdue','Overdue'],['dueToday','Today'],['dueThisWeek','This Week']].map(([k,l]) => (
             <button key={k} onClick={() => setFilter(k)} className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap ${filter===k?'bg-violet-600':'bg-slate-800 text-slate-400'}`}>{l}</button>
           ))}

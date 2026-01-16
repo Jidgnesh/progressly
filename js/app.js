@@ -102,10 +102,57 @@ function App() {
       setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
     };
 
+    const handleGoogleSignIn = (response) => {
+      try {
+        // Decode the JWT token (basic decode, in production verify signature)
+        const payload = JSON.parse(atob(response.credential.split('.')[1]));
+        
+        const googleUser = {
+          email: payload.email,
+          name: payload.name,
+          picture: payload.picture,
+          provider: 'google',
+          googleId: payload.sub
+        };
+        
+        // Save to users if not exists
+        const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+        const existingUser = users.find(u => u.email === googleUser.email);
+        
+        if (!existingUser) {
+          users.push({
+            id: Date.now(),
+            ...googleUser,
+            createdAt: Date.now()
+          });
+          localStorage.setItem(USERS_KEY, JSON.stringify(users));
+        }
+        
+        // Set authentication
+        localStorage.setItem(AUTH_KEY, JSON.stringify({
+          email: googleUser.email,
+          name: googleUser.name,
+          picture: googleUser.picture,
+          provider: 'google'
+        }));
+        
+        setIsAuthenticated(true);
+        setAuthError('');
+      } catch (error) {
+        setAuthError('Google sign in failed. Please try again.');
+        console.error('Google sign in error:', error);
+      }
+    };
+
     const handleLogout = () => {
       localStorage.removeItem(AUTH_KEY);
       setIsAuthenticated(false);
       setAuthPage('signin');
+      
+      // Sign out from Google if using Google Sign In
+      if (window.google && window.google.accounts) {
+        window.google.accounts.id.disableAutoSelect();
+      }
     };
 
     // ==================== EFFECTS ====================
@@ -125,6 +172,39 @@ function App() {
       }
       setLoading(false);
     }, [isAuthenticated]);
+
+    // Initialize Google Sign In
+    useEffect(() => {
+      if (!isAuthenticated && authPage === 'signin') {
+        const initGoogleSignIn = () => {
+          if (typeof window !== 'undefined' && window.google && window.google.accounts) {
+            const buttonElement = document.getElementById('google-signin-button');
+            if (buttonElement) {
+              // Clear any existing button
+              buttonElement.innerHTML = '';
+              
+              window.google.accounts.id.initialize({
+                client_id: GOOGLE_CLIENT_ID,
+                callback: handleGoogleSignIn,
+              });
+              
+              window.google.accounts.id.renderButton(buttonElement, {
+                theme: 'outline',
+                size: 'large',
+                width: '100%',
+                text: 'signin_with',
+                locale: 'en'
+              });
+            }
+          } else {
+            // Retry if Google script hasn't loaded yet
+            setTimeout(initGoogleSignIn, 100);
+          }
+        };
+        
+        initGoogleSignIn();
+      }
+    }, [isAuthenticated, authPage]);
   
     // ==================== STORAGE FUNCTIONS ====================
     const saveTasks = (newTasks) => {
@@ -405,36 +485,48 @@ function App() {
 
               {/* Sign In Form */}
               {authPage === 'signin' && (
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-2">Email</label>
-                    <input
-                      type="email"
-                      value={authForm.email}
-                      onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
-                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="Enter your email"
-                      required
-                    />
+                <>
+                  <form onSubmit={handleSignIn} className="space-y-4">
+                    <div>
+                      <label className="block text-sm text-slate-400 mb-2">Email</label>
+                      <input
+                        type="email"
+                        value={authForm.email}
+                        onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
+                        className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                        placeholder="Enter your email"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-400 mb-2">Password</label>
+                      <input
+                        type="password"
+                        value={authForm.password}
+                        onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
+                        className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                        placeholder="Enter your password"
+                        required
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
+                    >
+                      Sign In
+                    </button>
+                  </form>
+
+                  {/* Divider */}
+                  <div className="flex items-center my-4">
+                    <div className="flex-1 border-t border-slate-600"></div>
+                    <span className="px-3 text-sm text-slate-400">or</span>
+                    <div className="flex-1 border-t border-slate-600"></div>
                   </div>
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-2">Password</label>
-                    <input
-                      type="password"
-                      value={authForm.password}
-                      onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
-                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="Enter your password"
-                      required
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
-                  >
-                    Sign In
-                  </button>
-                </form>
+
+                  {/* Google Sign In Button */}
+                  <div id="google-signin-button" className="w-full"></div>
+                </>
               )}
 
               {/* Login Form (same as Sign In) */}

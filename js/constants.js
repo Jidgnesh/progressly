@@ -17,3 +17,7 @@ const PRIORITIES = {
   const TRASH_KEY = 'planner-trash-v1';
   const AUTH_KEY = 'planner-auth-v1';
   const USERS_KEY = 'planner-users-v1';
+  
+  // Google OAuth Client ID - Replace with your actual client ID from Google Cloud Console
+  // Get it from: https://console.cloud.google.com/apis/credentials
+  const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID_HERE';

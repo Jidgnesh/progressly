@@ -6,6 +6,10 @@ function App() {
     const today = new Date();
   
     // ==================== STATE ====================
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [authPage, setAuthPage] = useState('signin'); // 'signin', 'signup', 'login'
+    const [authForm, setAuthForm] = useState({ email: '', password: '', name: '', confirmPassword: '' });
+    const [authError, setAuthError] = useState('');
     const [tasks, setTasks] = useState([]);
     const [trash, setTrash] = useState([]);
     const [currentMonth, setCurrentMonth] = useState(today.getMonth());
@@ -25,21 +29,101 @@ function App() {
     const [sortBy, setSortBy] = useState('priority'); // 'priority', 'dueDate', 'progress'
     const [searchQuery, setSearchQuery] = useState('');
   
+    // ==================== AUTHENTICATION FUNCTIONS ====================
+    const checkAuth = () => {
+      const auth = localStorage.getItem(AUTH_KEY);
+      if (auth) {
+        setIsAuthenticated(true);
+        return true;
+      }
+      return false;
+    };
+
+    const handleSignUp = (e) => {
+      e.preventDefault();
+      setAuthError('');
+      
+      if (!authForm.name || !authForm.email || !authForm.password) {
+        setAuthError('All fields are required');
+        return;
+      }
+      
+      if (authForm.password !== authForm.confirmPassword) {
+        setAuthError('Passwords do not match');
+        return;
+      }
+      
+      if (authForm.password.length < 6) {
+        setAuthError('Password must be at least 6 characters');
+        return;
+      }
+      
+      const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+      if (users.find(u => u.email === authForm.email)) {
+        setAuthError('Email already exists');
+        return;
+      }
+      
+      const newUser = {
+        id: Date.now(),
+        name: authForm.name,
+        email: authForm.email,
+        password: authForm.password, // In production, hash this!
+        createdAt: Date.now()
+      };
+      
+      users.push(newUser);
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+      localStorage.setItem(AUTH_KEY, JSON.stringify({ email: authForm.email, name: authForm.name }));
+      setIsAuthenticated(true);
+      setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
+    };
+
+    const handleSignIn = (e) => {
+      e.preventDefault();
+      setAuthError('');
+      
+      if (!authForm.email || !authForm.password) {
+        setAuthError('Email and password are required');
+        return;
+      }
+      
+      const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+      const user = users.find(u => u.email === authForm.email && u.password === authForm.password);
+      
+      if (!user) {
+        setAuthError('Invalid email or password');
+        return;
+      }
+      
+      localStorage.setItem(AUTH_KEY, JSON.stringify({ email: user.email, name: user.name }));
+      setIsAuthenticated(true);
+      setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
+    };
+
+    const handleLogout = () => {
+      localStorage.removeItem(AUTH_KEY);
+      setIsAuthenticated(false);
+      setAuthPage('signin');
+    };
+
     // ==================== EFFECTS ====================
     useEffect(() => {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        let loadedTasks = JSON.parse(saved);
-        loadedTasks = migrateIncompleteTasks(loadedTasks, today);
-        setTasks(loadedTasks);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedTasks));
-      }
-      const savedTrash = localStorage.getItem(TRASH_KEY);
-      if (savedTrash) {
-        setTrash(JSON.parse(savedTrash));
+      if (checkAuth()) {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          let loadedTasks = JSON.parse(saved);
+          loadedTasks = migrateIncompleteTasks(loadedTasks, today);
+          setTasks(loadedTasks);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedTasks));
+        }
+        const savedTrash = localStorage.getItem(TRASH_KEY);
+        if (savedTrash) {
+          setTrash(JSON.parse(savedTrash));
+        }
       }
       setLoading(false);
-    }, []);
+    }, [isAuthenticated]);
   
     // ==================== STORAGE FUNCTIONS ====================
     const saveTasks = (newTasks) => {
@@ -210,6 +294,205 @@ function App() {
     // ==================== LOADING ====================
     if (loading) {
       return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400">Loading...</div>;
+    }
+
+    // ==================== AUTHENTICATION PAGES ====================
+    if (!isAuthenticated) {
+      const currentUser = JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
+      
+      return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-white mb-2">Progressly</h1>
+              <p className="text-slate-400">Keep moving forward!</p>
+            </div>
+
+            {/* Auth Form Card */}
+            <div className="bg-slate-800 rounded-2xl p-6 shadow-xl">
+              {/* Tabs */}
+              <div className="flex gap-2 mb-6">
+                <button
+                  onClick={() => { setAuthPage('signin'); setAuthError(''); }}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                    authPage === 'signin' ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => { setAuthPage('signup'); setAuthError(''); }}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                    authPage === 'signup' ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                  }`}
+                >
+                  Sign Up
+                </button>
+                <button
+                  onClick={() => { setAuthPage('login'); setAuthError(''); }}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                    authPage === 'login' ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                  }`}
+                >
+                  Login
+                </button>
+              </div>
+
+              {/* Error Message */}
+              {authError && (
+                <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-400 text-sm">
+                  {authError}
+                </div>
+              )}
+
+              {/* Sign Up Form */}
+              {authPage === 'signup' && (
+                <form onSubmit={handleSignUp} className="space-y-4">
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">Name</label>
+                    <input
+                      type="text"
+                      value={authForm.name}
+                      onChange={(e) => setAuthForm({...authForm, name: e.target.value})}
+                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                      placeholder="Enter your name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">Email</label>
+                    <input
+                      type="email"
+                      value={authForm.email}
+                      onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
+                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                      placeholder="Enter your email"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">Password</label>
+                    <input
+                      type="password"
+                      value={authForm.password}
+                      onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
+                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                      placeholder="Create a password"
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">Confirm Password</label>
+                    <input
+                      type="password"
+                      value={authForm.confirmPassword}
+                      onChange={(e) => setAuthForm({...authForm, confirmPassword: e.target.value})}
+                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                      placeholder="Confirm your password"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
+                  >
+                    Sign Up
+                  </button>
+                </form>
+              )}
+
+              {/* Sign In Form */}
+              {authPage === 'signin' && (
+                <form onSubmit={handleSignIn} className="space-y-4">
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">Email</label>
+                    <input
+                      type="email"
+                      value={authForm.email}
+                      onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
+                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                      placeholder="Enter your email"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">Password</label>
+                    <input
+                      type="password"
+                      value={authForm.password}
+                      onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
+                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                      placeholder="Enter your password"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
+                  >
+                    Sign In
+                  </button>
+                </form>
+              )}
+
+              {/* Login Form (same as Sign In) */}
+              {authPage === 'login' && (
+                <form onSubmit={handleSignIn} className="space-y-4">
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">Email</label>
+                    <input
+                      type="email"
+                      value={authForm.email}
+                      onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
+                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                      placeholder="Enter your email"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">Password</label>
+                    <input
+                      type="password"
+                      value={authForm.password}
+                      onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
+                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                      placeholder="Enter your password"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
+                  >
+                    Login
+                  </button>
+                </form>
+              )}
+
+              {/* Footer Links */}
+              <div className="mt-6 text-center text-sm text-slate-400">
+                {authPage === 'signup' ? (
+                  <p>
+                    Already have an account?{' '}
+                    <button onClick={() => { setAuthPage('signin'); setAuthError(''); }} className="text-violet-400 hover:text-violet-300">
+                      Sign In
+                    </button>
+                  </p>
+                ) : (
+                  <p>
+                    Don't have an account?{' '}
+                    <button onClick={() => { setAuthPage('signup'); setAuthError(''); }} className="text-violet-400 hover:text-violet-300">
+                      Sign Up
+                    </button>
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
     }
   
     // ==================== TRASH PAGE ====================
@@ -475,10 +758,19 @@ function App() {
         
         {/* Header */}
         <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 pt-8 pb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold">Progressly</h1>
+          <div className="flex items-center justify-between mb-1">
+            <div>
+              <h1 className="text-2xl font-bold">Progressly</h1>
+              <p className="text-violet-200 text-sm">Keep moving forward !</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="p-2 hover:bg-white/20 rounded-full transition-all"
+              title="Logout"
+            >
+              <Icon name="LogOut" size={24} color="white"/>
+            </button>
           </div>
-          <p className="text-violet-200 text-sm">Keep moving forward !</p>
         </div>
   
         {/* Month Navigator */}

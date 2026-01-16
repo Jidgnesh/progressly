@@ -23,6 +23,8 @@ function App() {
     const [editingTask, setEditingTask] = useState(null);
     const [editForm, setEditForm] = useState({ title: '', priority: 'medium', category: 'Personal', dueDate: '' });
     const [sortBy, setSortBy] = useState('priority'); // 'priority', 'dueDate', 'progress'
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showSearch, setShowSearch] = useState(false);
   
     // ==================== EFFECTS ====================
     useEffect(() => {
@@ -147,13 +149,27 @@ function App() {
       return Object.values(monthsMap).sort((a, b) => a.year !== b.year ? b.year - a.year : b.month - a.month);
     };
   
+    // Search function
+    const searchTasks = (query, taskList) => {
+      if (!query.trim()) return taskList;
+      const lowerQuery = query.toLowerCase();
+      return taskList.filter(t => 
+        t.title.toLowerCase().includes(lowerQuery) ||
+        t.category.toLowerCase().includes(lowerQuery) ||
+        t.priority.toLowerCase().includes(lowerQuery) ||
+        (t.dueDate && formatDate(t.dueDate).toLowerCase().includes(lowerQuery)) ||
+        (t.subtasks && t.subtasks.some(st => st.title.toLowerCase().includes(lowerQuery)))
+      );
+    };
+    
     const monthTasks = tasks.filter(t => t.month === currentMonth && t.year === currentYear);
+    const searchedTasks = searchQuery ? searchTasks(searchQuery, tasks) : monthTasks;
     const completedCount = monthTasks.filter(t => getTaskProgress(t) === 100).length;
     const totalCount = monthTasks.length;
     const avgProgress = totalCount > 0 ? Math.round(monthTasks.reduce((s, t) => s + getTaskProgress(t), 0) / totalCount) : 0;
     const inProgressCount = monthTasks.filter(t => { const p = getTaskProgress(t); return p > 0 && p < 100; }).length;
   
-    const filteredTasks = monthTasks.filter(t => {
+    const filteredTasks = (searchQuery ? searchedTasks : monthTasks).filter(t => {
       const p = getTaskProgress(t);
       if (filter === 'pending') return p < 100;
       if (filter === 'completed') return p === 100;
@@ -325,11 +341,48 @@ function App() {
         
         {/* Header */}
         <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 pt-8 pb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <Logo size={24} />
-            <h1 className="text-2xl font-bold">Progressly</h1>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <Logo size={24} />
+              <h1 className="text-2xl font-bold">Progressly</h1>
+            </div>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowSearch(!showSearch); setSearchQuery(''); }} 
+              className="p-2 hover:bg-white/20 rounded-full"
+            >
+              <Icon name={showSearch ? "X" : "Search"} size={24} color="white"/>
+            </button>
           </div>
-          <p className="text-violet-200 text-sm">Keep moving forward !</p>
+          {showSearch ? (
+            <div className="mt-3">
+              <div className="relative">
+                <Icon name="Search" size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"/>
+                <input
+                  type="text"
+                  placeholder="Search tasks..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-white/20 backdrop-blur-sm rounded-xl pl-10 pr-4 py-3 text-white placeholder-white/70 outline-none focus:bg-white/30"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery('')} 
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/70 hover:text-white"
+                  >
+                    <Icon name="X" size={18}/>
+                  </button>
+                )}
+              </div>
+              {searchQuery && (
+                <p className="text-violet-200 text-xs mt-2">
+                  Found {searchedTasks.length} task{searchedTasks.length !== 1 ? 's' : ''} across all months
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-violet-200 text-sm">Keep moving forward !</p>
+          )}
         </div>
   
         {/* Month Navigator */}
@@ -397,13 +450,27 @@ function App() {
         <div className="px-4 mt-4">
           <div className="flex items-center gap-2 mb-3">
             <Icon name="ListTodo" size={18} color="#a78bfa"/>
-            <span className="font-medium">Tasks</span>
+            <span className="font-medium">
+              {searchQuery ? `Search Results (${sortedTasks.length})` : 'Tasks'}
+            </span>
           </div>
   
           {sortedTasks.length === 0 ? (
             <div className="text-center py-12 text-slate-500">
-              <Icon name="Circle" size={48} className="mx-auto opacity-50"/>
-              <p className="mt-3">{filter==='all'?'No tasks this month':'No tasks here'}</p>
+              <Icon name={searchQuery ? "Search" : "Circle"} size={48} className="mx-auto opacity-50"/>
+              <p className="mt-3">
+                {searchQuery 
+                  ? `No tasks found for "${searchQuery}"` 
+                  : filter==='all'?'No tasks this month':'No tasks here'}
+              </p>
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')} 
+                  className="mt-2 text-violet-400 text-sm hover:text-violet-300"
+                >
+                  Clear search
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
@@ -425,6 +492,7 @@ function App() {
                   onDeleteSubtask={(stId) => deleteSubtask(task.id, stId)}
                   onUpdateSubtaskProgress={(stId, p) => updateSubtaskProgress(task.id, stId, p)}
                   onToggleAddSubtask={() => setAddingSubtaskTo(addingSubtaskTo === task.id ? null : task.id)}
+                  searchQuery={searchQuery}
                 />
               ))}
             </div>

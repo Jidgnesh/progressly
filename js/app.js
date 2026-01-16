@@ -24,6 +24,7 @@ function App() {
     const [editForm, setEditForm] = useState({ title: '', priority: 'medium', category: 'Personal', dueDate: '' });
     const [sortBy, setSortBy] = useState('priority'); // 'priority', 'dueDate', 'progress'
     const [searchQuery, setSearchQuery] = useState('');
+    const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   
     // ==================== EFFECTS ====================
     useEffect(() => {
@@ -57,6 +58,7 @@ function App() {
       setExpandedTask(null);
       setExpandedSubtask(null);
       setAddingSubtaskTo(null);
+      setShowFilterDropdown(false);
     };
   
     const changeMonth = (delta) => {
@@ -174,8 +176,6 @@ function App() {
       if (filter === 'completed') return p === 100;
       if (filter === 'inprogress') return p > 0 && p < 100;
       if (filter === 'overdue') return t.dueDate && isOverdue(t.dueDate) && p < 100;
-      if (filter === 'dueToday') return t.dueDate && isDueToday(t.dueDate);
-      if (filter === 'dueThisWeek') return t.dueDate && isDueThisWeek(t.dueDate);
       return true;
     });
   
@@ -554,19 +554,55 @@ function App() {
           )}
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex gap-2 px-4 mt-3 overflow-x-auto" onClick={(e) => e.stopPropagation()}>
-          {[['all','All'],['pending','To Do'],['inprogress','In Progress'],['completed','Done'],['overdue','Overdue'],['dueToday','Today'],['dueThisWeek','This Week']].map(([k,l]) => (
-            <button key={k} onClick={() => setFilter(k)} className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap ${filter===k?'bg-violet-600':'bg-slate-800 text-slate-400'}`}>{l}</button>
-          ))}
-        </div>
-        
-        {/* Sort Options */}
-        <div className="flex gap-2 px-4 mt-3" onClick={(e) => e.stopPropagation()}>
-          <span className="text-xs text-slate-400 self-center">Sort by:</span>
-          {[['priority','Priority'],['dueDate','Due Date'],['progress','Progress']].map(([k,l]) => (
-            <button key={k} onClick={() => setSortBy(k)} className={`px-3 py-1 rounded-lg text-xs font-medium ${sortBy===k?'bg-violet-600':'bg-slate-800 text-slate-400'}`}>{l}</button>
-          ))}
+        {/* Filter and Sort Controls */}
+        <div className="px-4 mt-3 flex items-center justify-between gap-3" onClick={(e) => e.stopPropagation()}>
+          {/* Filter Dropdown */}
+          <div className="relative flex-1">
+            <button 
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              className="w-full bg-slate-800 rounded-xl px-4 py-2.5 text-sm font-medium text-white flex items-center justify-between hover:bg-slate-700"
+            >
+              <span className="flex items-center gap-2">
+                <Icon name="Filter" size={16}/>
+                {filter === 'all' ? 'All' : 
+                 filter === 'pending' ? 'To Do' : 
+                 filter === 'inprogress' ? 'In Progress' : 
+                 filter === 'completed' ? 'Done' : 
+                 filter === 'overdue' ? 'Overdue' : 'All'}
+              </span>
+              <Icon name={showFilterDropdown ? "ChevronUp" : "ChevronDown"} size={16}/>
+            </button>
+            {showFilterDropdown && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 rounded-xl shadow-lg z-10 border border-slate-700">
+                {[['all','All'],['pending','To Do'],['inprogress','In Progress'],['completed','Done'],['overdue','Overdue']].map(([k,l]) => (
+                  <button 
+                    key={k} 
+                    onClick={() => { setFilter(k); setShowFilterDropdown(false); }} 
+                    className={`w-full px-4 py-2.5 text-sm font-medium text-left hover:bg-slate-700 first:rounded-t-xl last:rounded-b-xl flex items-center gap-2 ${
+                      filter===k ? 'bg-violet-600/20 text-violet-400' : 'text-slate-300'
+                    }`}
+                  >
+                    {filter === k && <Icon name="Check" size={16}/>}
+                    <span className={filter === k ? '' : 'ml-6'}>{l}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Sort Options */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 whitespace-nowrap">Sort:</span>
+            {[['priority','Priority'],['dueDate','Due Date'],['progress','Progress']].map(([k,l]) => (
+              <button 
+                key={k} 
+                onClick={() => setSortBy(k)} 
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap ${sortBy===k?'bg-violet-600 text-white':'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
         </div>
   
         {/* Task List */}

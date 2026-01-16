@@ -400,7 +400,6 @@ function App() {
         <div className="min-h-screen bg-slate-900 text-white pb-24">
           <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 pt-8 pb-6">
             <div className="flex items-center gap-2 mb-1">
-              <Logo size={24} />
               <h1 className="text-2xl font-bold">Progressly</h1>
             </div>
             <p className="text-violet-200 text-sm">View progress across all months</p>
@@ -479,7 +478,6 @@ function App() {
         <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 pt-8 pb-6">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
-              <Logo size={24} />
               <h1 className="text-2xl font-bold">Progressly</h1>
             </div>
             <button 

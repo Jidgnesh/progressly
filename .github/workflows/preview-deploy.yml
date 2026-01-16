@@ -1,0 +1,128 @@
+name: Preview Deploy
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (if needed for validation)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Validate HTML
+        run: |
+          echo "Validating HTML structure..."
+          if [ ! -f "index.html" ]; then
+            echo "Error: index.html not found"
+            exit 1
+          fi
+          echo "✓ index.html exists"
+
+      - name: Check required files
+        run: |
+          echo "Checking required files..."
+          required_files=("index.html" "js/app.js" "js/components.js" "js/constants.js" "js/utils.js" "styles.css" "manifest.json")
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "Error: $file not found"
+              exit 1
+            fi
+          done
+          echo "✓ All required files present"
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Get PR number
+        id: pr
+        run: |
+          PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+      - name: Comment PR with preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const previewUrl = '${{ steps.deployment.outputs.page_url }}';
+            const branchName = context.payload.pull_request.head.ref;
+            
+            const body = `## 🚀 Preview Deployment Ready!
+            
+            Your branch **\`${branchName}\`** has been deployed to a preview environment.
+            
+            **🔗 Preview URL:** ${previewUrl}
+            
+            ### 📋 What to Test:
+            - [ ] Verify the app loads correctly
+            - [ ] Test all new features
+            - [ ] Check responsive design
+            - [ ] Verify PWA functionality
+            - [ ] Test on different browsers
+            
+            ### ⚠️ Note:
+            This is a preview deployment. Please test thoroughly before merging to main.
+            
+            ---
+            *Preview will be updated automatically on each push to this branch.*`;
+            
+            // Find existing comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+            
+            const botComment = comments.data.find(comment => 
+              comment.user.type === 'Bot' && comment.body.includes('Preview Deployment Ready')
+            );
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: body
+              });
+            }

@@ -11,7 +11,7 @@ function App() {
     const [currentMonth, setCurrentMonth] = useState(today.getMonth());
     const [currentYear, setCurrentYear] = useState(today.getFullYear());
     const [showAdd, setShowAdd] = useState(false);
-    const [newTask, setNewTask] = useState({ title: '', priority: 'medium', category: 'Personal' });
+    const [newTask, setNewTask] = useState({ title: '', priority: 'medium', category: 'Personal', dueDate: '' });
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all');
     const [expandedTask, setExpandedTask] = useState(null);
@@ -21,7 +21,8 @@ function App() {
     const [currentPage, setCurrentPage] = useState('home');
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [editingTask, setEditingTask] = useState(null);
-    const [editForm, setEditForm] = useState({ title: '', priority: 'medium', category: 'Personal' });
+    const [editForm, setEditForm] = useState({ title: '', priority: 'medium', category: 'Personal', dueDate: '' });
+    const [sortBy, setSortBy] = useState('priority'); // 'priority', 'dueDate', 'progress'
   
     // ==================== EFFECTS ====================
     useEffect(() => {
@@ -74,10 +75,11 @@ function App() {
         month: currentMonth,
         year: currentYear,
         progress: 0,
-        subtasks: []
+        subtasks: [],
+        dueDate: newTask.dueDate || null
       };
       saveTasks([...tasks, task]);
-      setNewTask({ title: '', priority: 'medium', category: 'Personal' });
+      setNewTask({ title: '', priority: 'medium', category: 'Personal', dueDate: '' });
       setShowAdd(false);
     };
   
@@ -104,7 +106,7 @@ function App() {
     const emptyTrash = () => saveTrash([]);
   
     const openEditModal = (task) => {
-      setEditForm({ title: task.title, priority: task.priority, category: task.category });
+      setEditForm({ title: task.title, priority: task.priority, category: task.category, dueDate: task.dueDate || '' });
       setEditingTask(task.id);
     };
   
@@ -156,12 +158,32 @@ function App() {
       if (filter === 'pending') return p < 100;
       if (filter === 'completed') return p === 100;
       if (filter === 'inprogress') return p > 0 && p < 100;
+      if (filter === 'overdue') return t.dueDate && isOverdue(t.dueDate) && p < 100;
+      if (filter === 'dueToday') return t.dueDate && isDueToday(t.dueDate);
+      if (filter === 'dueThisWeek') return t.dueDate && isDueThisWeek(t.dueDate);
       return true;
     });
   
     const sortedTasks = filteredTasks.sort((a, b) => {
+      // Sort by completion status first
       const pa = getTaskProgress(a), pb = getTaskProgress(b);
       if ((pa === 100) !== (pb === 100)) return pa === 100 ? 1 : -1;
+      
+      // Then sort by selected criteria
+      if (sortBy === 'dueDate') {
+        if (!a.dueDate && !b.dueDate) {
+          return { high: 0, medium: 1, low: 2 }[a.priority] - { high: 0, medium: 1, low: 2 }[b.priority];
+        }
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return new Date(a.dueDate) - new Date(b.dueDate);
+      }
+      
+      if (sortBy === 'progress') {
+        return pb - pa;
+      }
+      
+      // Default: sort by priority
       return { high: 0, medium: 1, low: 2 }[a.priority] - { high: 0, medium: 1, low: 2 }[b.priority];
     });
   
@@ -358,8 +380,16 @@ function App() {
   
         {/* Filter Tabs */}
         <div className="flex gap-2 px-4 mt-4 overflow-x-auto" onClick={(e) => e.stopPropagation()}>
-          {[['all','All'],['pending','To Do'],['inprogress','In Progress'],['completed','Done']].map(([k,l]) => (
+          {[['all','All'],['pending','To Do'],['inprogress','In Progress'],['completed','Done'],['overdue','Overdue'],['dueToday','Today'],['dueThisWeek','This Week']].map(([k,l]) => (
             <button key={k} onClick={() => setFilter(k)} className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap ${filter===k?'bg-violet-600':'bg-slate-800 text-slate-400'}`}>{l}</button>
+          ))}
+        </div>
+        
+        {/* Sort Options */}
+        <div className="flex gap-2 px-4 mt-3" onClick={(e) => e.stopPropagation()}>
+          <span className="text-xs text-slate-400 self-center">Sort by:</span>
+          {[['priority','Priority'],['dueDate','Due Date'],['progress','Progress']].map(([k,l]) => (
+            <button key={k} onClick={() => setSortBy(k)} className={`px-3 py-1 rounded-lg text-xs font-medium ${sortBy===k?'bg-violet-600':'bg-slate-800 text-slate-400'}`}>{l}</button>
           ))}
         </div>
   

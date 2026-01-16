@@ -255,7 +255,7 @@ const AddTaskModal = ({ newTask, setNewTask, onAdd, onCancel }) => {
 // ============================================
 const BottomNav = ({ currentPage, setCurrentPage, trashCount }) => {
     return (
-      <div className="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 px-6 py-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 px-4 py-3">
         <div className="flex justify-around items-center">
           <button 
             onClick={() => setCurrentPage('home')} 
@@ -265,9 +265,6 @@ const BottomNav = ({ currentPage, setCurrentPage, trashCount }) => {
             <span className="text-xs">Home</span>
           </button>
           
-          {/* Divider */}
-          <div className="w-px h-10 bg-slate-600 rounded-full"></div>
-          
           <button 
             onClick={() => setCurrentPage('history')} 
             className={`flex flex-col items-center gap-1 ${currentPage === 'history' ? 'text-violet-400' : 'text-slate-400'}`}
@@ -276,8 +273,13 @@ const BottomNav = ({ currentPage, setCurrentPage, trashCount }) => {
             <span className="text-xs">History</span>
           </button>
           
-          {/* Divider */}
-          <div className="w-px h-10 bg-slate-600 rounded-full"></div>
+          <button 
+            onClick={() => setCurrentPage('statistics')} 
+            className={`flex flex-col items-center gap-1 ${currentPage === 'statistics' ? 'text-violet-400' : 'text-slate-400'}`}
+          >
+            <Icon name="BarChart3" size={24}/>
+            <span className="text-xs">Stats</span>
+          </button>
           
           <button 
             onClick={() => setCurrentPage('trash')} 

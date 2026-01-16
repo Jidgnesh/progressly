@@ -258,6 +258,142 @@ function App() {
       );
     }
   
+    // ==================== STATISTICS PAGE ====================
+    if (currentPage === 'statistics') {
+      const categoryStats = getCategoryStats(tasks);
+      const priorityStats = getPriorityStats(tasks);
+      const weeklyStats = getWeeklyStats(tasks);
+      const monthlyTrends = getMonthlyTrends(tasks);
+      const completionStreak = getCompletionStreak(tasks);
+      const dailyCompletion = getDailyCompletion(tasks);
+      const maxDailyCount = Math.max(...dailyCompletion.map(d => d.count), 1);
+      
+      return (
+        <div className="min-h-screen bg-slate-900 text-white pb-24">
+          <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 pt-8 pb-6">
+            <div className="flex items-center gap-2 mb-1">
+              <Icon name="BarChart3" size={24} />
+              <h1 className="text-2xl font-bold">Statistics</h1>
+            </div>
+            <p className="text-violet-200 text-sm">Track your productivity trends</p>
+          </div>
+
+          <div className="px-4 mt-4 space-y-4">
+            {/* Overall Stats */}
+            <div className="bg-slate-800 rounded-2xl p-5">
+              <h2 className="text-lg font-semibold mb-4">Overall Performance</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-violet-400">{tasks.length}</div>
+                  <div className="text-xs text-slate-400 mt-1">Total Tasks</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-400">{completionStreak}</div>
+                  <div className="text-xs text-slate-400 mt-1">Day Streak</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-blue-400">{tasks.filter(t => getTaskProgress(t) === 100).length}</div>
+                  <div className="text-xs text-slate-400 mt-1">Completed</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-yellow-400">{allTasksProgress}%</div>
+                  <div className="text-xs text-slate-400 mt-1">Avg Progress</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Daily Completion Chart */}
+            <div className="bg-slate-800 rounded-2xl p-5">
+              <h2 className="text-lg font-semibold mb-4">Last 7 Days</h2>
+              <div className="flex items-end justify-between gap-2 h-32">
+                {dailyCompletion.map((day, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center">
+                    <div className="w-full flex flex-col items-center justify-end" style={{ height: '100px' }}>
+                      <div 
+                        className="w-full bg-violet-600 rounded-t transition-all"
+                        style={{ height: `${(day.count / maxDailyCount) * 100}%`, minHeight: day.count > 0 ? '4px' : '0' }}
+                      />
+                    </div>
+                    <div className="text-xs text-slate-400 mt-2">{day.day}</div>
+                    <div className="text-xs font-bold mt-1">{day.count}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Category Breakdown */}
+            <div className="bg-slate-800 rounded-2xl p-5">
+              <h2 className="text-lg font-semibold mb-4">By Category</h2>
+              <div className="space-y-3">
+                {Object.entries(categoryStats).map(([cat, stats]) => (
+                  <div key={cat}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium">{cat}</span>
+                      <span className="text-xs text-slate-400">{stats.completed}/{stats.total} • {stats.avgProgress}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${stats.avgProgress}%`, backgroundColor: getProgressColor(stats.avgProgress) }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Priority Distribution */}
+            <div className="bg-slate-800 rounded-2xl p-5">
+              <h2 className="text-lg font-semibold mb-4">Priority Distribution</h2>
+              <div className="space-y-3">
+                {Object.entries(priorityStats).map(([priority, count]) => {
+                  const total = Object.values(priorityStats).reduce((a, b) => a + b, 0);
+                  const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                  return (
+                    <div key={priority}>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-medium capitalize" style={{ color: PRIORITIES[priority] }}>{priority}</span>
+                        <span className="text-xs text-slate-400">{count} tasks • {percentage}%</span>
+                      </div>
+                      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${percentage}%`, backgroundColor: PRIORITIES[priority] }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Monthly Trends */}
+            <div className="bg-slate-800 rounded-2xl p-5">
+              <h2 className="text-lg font-semibold mb-4">Monthly Trends (Last 6 Months)</h2>
+              <div className="space-y-3">
+                {monthlyTrends.map((trend, i) => (
+                  <div key={i}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium">{trend.month} {trend.year}</span>
+                      <span className="text-xs text-slate-400">{trend.completed}/{trend.total} • {trend.completionRate}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${trend.completionRate}%`, backgroundColor: getProgressColor(trend.completionRate) }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <BottomNav currentPage={currentPage} setCurrentPage={setCurrentPage} trashCount={trash.length} />
+        </div>
+      );
+    }
+
     // ==================== HISTORY PAGE ====================
     if (currentPage === 'history') {
       return (

@@ -7,7 +7,7 @@ function App() {
   
     // ==================== STATE ====================
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [authPage, setAuthPage] = useState('signin'); // 'signin', 'signup', 'login'
+    const [authPage, setAuthPage] = useState('signin'); // 'signin', 'signup'
     const [authForm, setAuthForm] = useState({ email: '', password: '', name: '', confirmPassword: '' });
     const [authError, setAuthError] = useState('');
     const [tasks, setTasks] = useState([]);
@@ -329,14 +329,6 @@ function App() {
                 >
                   Sign Up
                 </button>
-                <button
-                  onClick={() => { setAuthPage('login'); setAuthError(''); }}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
-                    authPage === 'login' ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                  }`}
-                >
-                  Login
-                </button>
               </div>
 
               {/* Error Message */}
@@ -433,40 +425,6 @@ function App() {
                     className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
                   >
                     Sign In
-                  </button>
-                </form>
-              )}
-
-              {/* Login Form (same as Sign In) */}
-              {authPage === 'login' && (
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-2">Email</label>
-                    <input
-                      type="email"
-                      value={authForm.email}
-                      onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
-                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="Enter your email"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-2">Password</label>
-                    <input
-                      type="password"
-                      value={authForm.password}
-                      onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
-                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="Enter your password"
-                      required
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
-                  >
-                    Login
                   </button>
                 </form>
               )}

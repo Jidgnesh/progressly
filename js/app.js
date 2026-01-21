@@ -38,11 +38,29 @@ function App() {
   
     // Check if Firebase is available
     const isFirebaseAvailable = () => {
-      return typeof firebase !== 'undefined' && 
-             firebase.apps && 
-             firebase.apps.length > 0 &&
-             FIREBASE_CONFIG && 
-             FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY';
+      try {
+        const isAvailable = typeof firebase !== 'undefined' && 
+                           firebase.apps && 
+                           firebase.apps.length > 0 &&
+                           typeof FIREBASE_CONFIG !== 'undefined' &&
+                           FIREBASE_CONFIG && 
+                           FIREBASE_CONFIG.apiKey && 
+                           FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY';
+        
+        if (!isAvailable) {
+          console.log('Firebase not available:', {
+            firebaseDefined: typeof firebase !== 'undefined',
+            appsLength: firebase?.apps?.length || 0,
+            configDefined: typeof FIREBASE_CONFIG !== 'undefined',
+            apiKey: FIREBASE_CONFIG?.apiKey ? 'present' : 'missing'
+          });
+        }
+        
+        return isAvailable;
+      } catch (error) {
+        console.error('Error checking Firebase availability:', error);
+        return false;
+      }
     };
   
     // ==================== AUTHENTICATION FUNCTIONS ====================
@@ -106,15 +124,16 @@ function App() {
           }
           return;
         } else {
+          // Firebase sign-up failed - show the error from Firebase
           setAuthError(result.error || 'Sign up failed');
           return;
         }
       }
       
-      // Fallback to localStorage
+      // Fallback to localStorage (only if Firebase is not available)
       const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
       if (users.find(u => u.email === authForm.email)) {
-        setAuthError('Email already exists');
+        setAuthError('Email already exists in local storage. Please use Firebase sign-up or use a different email.');
         return;
       }
       

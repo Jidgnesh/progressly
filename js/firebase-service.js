@@ -9,18 +9,39 @@ const FirebaseService = {
   // Sign up with email and password
   signUp: async (email, password, name) => {
     try {
+      // Ensure Firestore is online before proceeding
+      await firebase.firestore().enableNetwork();
+      
       const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
       
       // Update user profile with name
       await user.updateProfile({ displayName: name });
       
-      // Create user document in Firestore
-      await firebase.firestore().collection('users').doc(user.uid).set({
-        name: name,
-        email: email,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      // Create user document in Firestore with retry logic
+      try {
+        await firebase.firestore().collection('users').doc(user.uid).set({
+          name: name,
+          email: email,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (firestoreError) {
+        // If Firestore fails, still return success for auth
+        // The document can be created later when online
+        console.warn('Firestore document creation failed, but user is authenticated:', firestoreError);
+        // Try to create it in the background
+        setTimeout(async () => {
+          try {
+            await firebase.firestore().collection('users').doc(user.uid).set({
+              name: name,
+              email: email,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          } catch (e) {
+            console.error('Failed to create user document in background:', e);
+          }
+        }, 1000);
+      }
       
       return { success: true, user: { uid: user.uid, email: user.email, name: name } };
     } catch (error) {
@@ -32,6 +53,8 @@ const FirebaseService = {
         errorMessage = 'Password is too weak. Please use a stronger password.';
       } else if (error.code === 'auth/invalid-email') {
         errorMessage = 'Invalid email address. Please check and try again.';
+      } else if (error.message.includes('offline')) {
+        errorMessage = 'You appear to be offline. Please check your internet connection and try again.';
       }
       return { success: false, error: errorMessage };
     }

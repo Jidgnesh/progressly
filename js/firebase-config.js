@@ -17,6 +17,29 @@ if (typeof firebase !== 'undefined') {
     firebase.initializeApp(FIREBASE_CONFIG);
     window.firebaseAuth = firebase.auth();
     window.firebaseDb = firebase.firestore();
+    
+    // Force Firestore to go online
+    // This ensures Firestore is connected and not in offline mode
+    firebase.firestore().enableNetwork()
+      .then(() => {
+        console.log('Firestore is online');
+      })
+      .catch((err) => {
+        console.warn('Failed to enable Firestore network:', err);
+      });
+    
+    // Enable Firestore offline persistence (optional - allows offline writes)
+    firebase.firestore().enablePersistence()
+      .catch((err) => {
+        if (err.code === 'failed-precondition') {
+          console.warn('Firestore persistence failed: Multiple tabs open');
+        } else if (err.code === 'unimplemented') {
+          console.warn('Firestore persistence not supported in this browser');
+        } else {
+          console.warn('Firestore persistence error:', err);
+        }
+      });
+      
   } catch (error) {
     console.error('Firebase initialization error:', error);
   }

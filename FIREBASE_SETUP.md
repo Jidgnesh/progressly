@@ -40,10 +40,67 @@ This guide will help you set up Firebase to enable cloud storage for authenticat
 
 1. In Firebase Console, click **Firestore Database** in the left menu
 2. Click **Create database**
-3. Select **Start in test mode** (for development)
-   - **Note:** For production, you'll need to set up security rules
+3. Choose your mode:
+   - **For Development/Testing:** Select **Start in test mode** (allows read/write for 30 days)
+   - **For Production:** Select **Start in production mode** (requires security rules immediately)
 4. Choose a location (select closest to your users)
 5. Click **Enable**
+
+### Production Security Rules
+
+If you selected production mode or want to secure your database, use these security rules:
+
+1. In Firebase Console, go to **Firestore Database** > **Rules** tab
+2. Replace the default rules with the following:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Users collection - users can only access their own profile
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      
+      // User's tasks subcollection
+      match /tasks/{taskId} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // User's trash subcollection
+      match /trash/{trashId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}
+```
+
+3. Click **Publish** to save the rules
+
+### What These Rules Do:
+
+- ✅ **Only authenticated users** can access the database
+- ✅ **Users can only access their own data** (their user document, tasks, and trash)
+- ✅ **Prevents unauthorized access** to other users' data
+- ✅ **Secure by default** - denies all access unless explicitly allowed
+
+### Testing Your Rules
+
+After setting up rules, test them:
+1. Sign in to your app
+2. Create some tasks
+3. Try accessing the database from another account - it should be denied
+4. Check Firebase Console > Firestore > Rules > Rules Playground to test rules
 
 ## Step 4: Get Firebase Configuration
 
@@ -75,14 +132,20 @@ const FIREBASE_CONFIG = {
 
 ## Step 6: Set Up Firestore Security Rules (Important!)
 
-1. In Firebase Console, go to **Firestore Database** > **Rules**
-2. Replace the default rules with:
+**Note:** If you selected "Start in production mode" in Step 3, you must set up security rules immediately. If you selected "test mode", you have 30 days before you need to set rules.
+
+1. In Firebase Console, go to **Firestore Database** > **Rules** tab
+2. Replace the default rules with the production-ready rules shown in Step 3 above
+3. Click **Publish** to save the rules
+
+### Alternative: Simpler Rules (Same Security)
+
+If you prefer a more concise version:
 
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only access their own data
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
@@ -98,7 +161,7 @@ service cloud.firestore {
 }
 ```
 
-3. Click **Publish**
+Both rule sets provide the same level of security. The first version uses helper functions for better readability.
 
 ## Step 7: Test the Integration
 

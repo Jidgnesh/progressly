@@ -24,7 +24,16 @@ const FirebaseService = {
       
       return { success: true, user: { uid: user.uid, email: user.email, name: name } };
     } catch (error) {
-      return { success: false, error: error.message };
+      // Provide user-friendly error messages
+      let errorMessage = error.message;
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered. Please sign in instead.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak. Please use a stronger password.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address. Please check and try again.';
+      }
+      return { success: false, error: errorMessage };
     }
   },
   

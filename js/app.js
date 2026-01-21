@@ -32,18 +32,45 @@ function App() {
     const [sortBy, setSortBy] = useState('priority'); // 'priority', 'dueDate', 'progress'
     const [searchQuery, setSearchQuery] = useState('');
     const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [useFirebase, setUseFirebase] = useState(false);
+    const [syncing, setSyncing] = useState(false);
+  
+    // Check if Firebase is available
+    const isFirebaseAvailable = () => {
+      return typeof firebase !== 'undefined' && 
+             firebase.apps && 
+             firebase.apps.length > 0 &&
+             FIREBASE_CONFIG && 
+             FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY';
+    };
   
     // ==================== AUTHENTICATION FUNCTIONS ====================
-    const checkAuth = () => {
+    const checkAuth = async () => {
+      // Check Firebase first if available
+      if (isFirebaseAvailable()) {
+        const user = FirebaseService.getCurrentUser();
+        if (user) {
+          const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
+          const userData = userDoc.data();
+          setCurrentUser({ uid: user.uid, email: user.email, name: userData?.name || user.displayName || 'User' });
+          setIsAuthenticated(true);
+          setUseFirebase(true);
+          return true;
+        }
+      }
+      
+      // Fallback to localStorage
       const auth = localStorage.getItem(AUTH_KEY);
       if (auth) {
         setIsAuthenticated(true);
+        setUseFirebase(false);
         return true;
       }
       return false;
     };
 
-    const handleSignUp = (e) => {
+    const handleSignUp = async (e) => {
       e.preventDefault();
       setAuthError('');
       
@@ -62,6 +89,29 @@ function App() {
         return;
       }
       
+      // Try Firebase first if available
+      if (isFirebaseAvailable()) {
+        const result = await FirebaseService.signUp(authForm.email, authForm.password, authForm.name);
+        if (result.success) {
+          setCurrentUser(result.user);
+          setIsAuthenticated(true);
+          setUseFirebase(true);
+          setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
+          
+          // Migrate localStorage tasks to Firebase if any exist
+          const localTasks = localStorage.getItem(STORAGE_KEY);
+          if (localTasks) {
+            const tasks = JSON.parse(localTasks);
+            await FirebaseService.saveTasks(result.user.uid, tasks);
+          }
+          return;
+        } else {
+          setAuthError(result.error || 'Sign up failed');
+          return;
+        }
+      }
+      
+      // Fallback to localStorage
       const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
       if (users.find(u => u.email === authForm.email)) {
         setAuthError('Email already exists');
@@ -80,10 +130,11 @@ function App() {
       localStorage.setItem(USERS_KEY, JSON.stringify(users));
       localStorage.setItem(AUTH_KEY, JSON.stringify({ email: authForm.email, name: authForm.name }));
       setIsAuthenticated(true);
+      setUseFirebase(false);
       setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
     };
 
-    const handleSignIn = (e) => {
+    const handleSignIn = async (e) => {
       e.preventDefault();
       setAuthError('');
       
@@ -92,6 +143,22 @@ function App() {
         return;
       }
       
+      // Try Firebase first if available
+      if (isFirebaseAvailable()) {
+        const result = await FirebaseService.signIn(authForm.email, authForm.password);
+        if (result.success) {
+          setCurrentUser(result.user);
+          setIsAuthenticated(true);
+          setUseFirebase(true);
+          setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
+          return;
+        } else {
+          setAuthError(result.error || 'Invalid email or password');
+          return;
+        }
+      }
+      
+      // Fallback to localStorage
       const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
       const user = users.find(u => u.email === authForm.email && u.password === authForm.password);
       
@@ -102,10 +169,11 @@ function App() {
       
       localStorage.setItem(AUTH_KEY, JSON.stringify({ email: user.email, name: user.name }));
       setIsAuthenticated(true);
+      setUseFirebase(false);
       setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
     };
 
-    const handleForgotPassword = (e) => {
+    const handleForgotPassword = async (e) => {
       e.preventDefault();
       setAuthError('');
       
@@ -114,6 +182,22 @@ function App() {
         return;
       }
       
+      // Try Firebase first if available
+      if (isFirebaseAvailable()) {
+        const result = await FirebaseService.resetPassword(forgotEmail);
+        if (result.success) {
+          setAuthError('');
+          alert('Password reset email sent! Check your inbox and follow the instructions.');
+          setAuthPage('signin');
+          setForgotEmail('');
+          return;
+        } else {
+          setAuthError(result.error || 'Failed to send reset email');
+          return;
+        }
+      }
+      
+      // Fallback to localStorage
       const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
       const user = users.find(u => u.email === forgotEmail);
       
@@ -127,7 +211,7 @@ function App() {
       setAuthError('');
     };
 
-    const handleResetPassword = (e) => {
+    const handleResetPassword = async (e) => {
       e.preventDefault();
       setAuthError('');
       
@@ -146,6 +230,14 @@ function App() {
         return;
       }
       
+      // Try Firebase first if available (but this requires user to be signed in)
+      // For Firebase, password reset is handled via email link
+      if (isFirebaseAvailable()) {
+        setAuthError('Please use the password reset link sent to your email. If you need to reset again, use the "Forgot Password" option.');
+        return;
+      }
+      
+      // Fallback to localStorage
       const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
       const userIndex = users.findIndex(u => u.email === forgotEmail);
       
@@ -171,39 +263,89 @@ function App() {
       }, 100);
     };
 
-    const handleLogout = () => {
-      localStorage.removeItem(AUTH_KEY);
+    const handleLogout = async () => {
+      if (useFirebase && isFirebaseAvailable()) {
+        await FirebaseService.signOut();
+      } else {
+        localStorage.removeItem(AUTH_KEY);
+      }
+      setCurrentUser(null);
       setIsAuthenticated(false);
+      setUseFirebase(false);
       setAuthPage('signin');
     };
-
+  
     // ==================== EFFECTS ====================
     useEffect(() => {
-      if (checkAuth()) {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          let loadedTasks = JSON.parse(saved);
-          loadedTasks = migrateIncompleteTasks(loadedTasks, today);
-          setTasks(loadedTasks);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedTasks));
-        }
-        const savedTrash = localStorage.getItem(TRASH_KEY);
-        if (savedTrash) {
-          setTrash(JSON.parse(savedTrash));
-        }
+      const loadData = async () => {
+        const authenticated = await checkAuth();
+        if (authenticated) {
+          if (useFirebase && currentUser) {
+            // Load from Firebase
+            setSyncing(true);
+            const tasksResult = await FirebaseService.getTasks(currentUser.uid);
+            const trashResult = await FirebaseService.getTrash(currentUser.uid);
+            
+            if (tasksResult.success) {
+              let loadedTasks = tasksResult.tasks || [];
+              loadedTasks = migrateIncompleteTasks(loadedTasks, today);
+              setTasks(loadedTasks);
+            }
+            
+            if (trashResult.success) {
+              setTrash(trashResult.trash || []);
+            }
+            
+            // Set up real-time listener
+            FirebaseService.subscribeToTasks(currentUser.uid, (tasks) => {
+              let loadedTasks = tasks || [];
+              loadedTasks = migrateIncompleteTasks(loadedTasks, today);
+              setTasks(loadedTasks);
+            });
+            
+            setSyncing(false);
+          } else {
+            // Load from localStorage
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        let loadedTasks = JSON.parse(saved);
+        loadedTasks = migrateIncompleteTasks(loadedTasks, today);
+        setTasks(loadedTasks);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedTasks));
+      }
+      const savedTrash = localStorage.getItem(TRASH_KEY);
+      if (savedTrash) {
+        setTrash(JSON.parse(savedTrash));
+            }
+          }
       }
       setLoading(false);
-    }, [isAuthenticated]);
+      };
+      
+      loadData();
+    }, [isAuthenticated, useFirebase, currentUser]);
   
     // ==================== STORAGE FUNCTIONS ====================
-    const saveTasks = (newTasks) => {
+    const saveTasks = async (newTasks) => {
       setTasks(newTasks);
+      
+      if (useFirebase && currentUser && isFirebaseAvailable()) {
+        setSyncing(true);
+        await FirebaseService.saveTasks(currentUser.uid, newTasks);
+        setSyncing(false);
+      } else {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newTasks));
+      }
     };
   
-    const saveTrash = (newTrash) => {
+    const saveTrash = async (newTrash) => {
       setTrash(newTrash);
+      
+      if (useFirebase && currentUser && isFirebaseAvailable()) {
+        await FirebaseService.saveTrash(currentUser.uid, newTrash);
+      } else {
       localStorage.setItem(TRASH_KEY, JSON.stringify(newTrash));
+      }
     };
   
     // ==================== UI FUNCTIONS ====================
@@ -315,7 +457,7 @@ function App() {
         (t.subtasks && t.subtasks.some(st => st.title.toLowerCase().includes(lowerQuery)))
       );
     };
-    
+  
     const monthTasks = tasks.filter(t => t.month === currentMonth && t.year === currentYear);
     const searchedTasks = searchQuery ? searchTasks(searchQuery, tasks) : monthTasks;
     const completedCount = monthTasks.filter(t => getTaskProgress(t) === 100).length;
@@ -810,12 +952,12 @@ function App() {
               </div>
             </div>
           </div>
-
+  
           <BottomNav currentPage={currentPage} setCurrentPage={setCurrentPage} trashCount={trash.length} />
         </div>
       );
     }
-
+  
     // ==================== HISTORY PAGE ====================
     if (currentPage === 'history') {
       return (
@@ -900,7 +1042,7 @@ function App() {
         <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 pt-8 pb-6">
           <div className="flex items-center justify-between mb-1">
             <div>
-              <h1 className="text-2xl font-bold">Progressly</h1>
+            <h1 className="text-2xl font-bold">Progressly</h1>
               <p className="text-violet-200 text-sm">Keep moving forward !</p>
             </div>
             <button

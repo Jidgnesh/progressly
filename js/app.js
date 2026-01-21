@@ -7,9 +7,12 @@ function App() {
   
     // ==================== STATE ====================
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [authPage, setAuthPage] = useState('signin'); // 'signin', 'signup'
+    const [authPage, setAuthPage] = useState('signin'); // 'signin', 'signup', 'forgot'
     const [authForm, setAuthForm] = useState({ email: '', password: '', name: '', confirmPassword: '' });
     const [authError, setAuthError] = useState('');
+    const [forgotEmail, setForgotEmail] = useState('');
+    const [resetPassword, setResetPassword] = useState({ newPassword: '', confirmPassword: '' });
+    const [forgotStep, setForgotStep] = useState('email'); // 'email', 'reset'
     const [tasks, setTasks] = useState([]);
     const [trash, setTrash] = useState([]);
     const [currentMonth, setCurrentMonth] = useState(today.getMonth());
@@ -420,6 +423,15 @@ function App() {
                       required
                     />
                   </div>
+                  <div className="text-right">
+                    <button
+                      type="button"
+                      onClick={() => { setAuthPage('forgot'); setAuthError(''); setForgotEmail(''); setForgotStep('email'); }}
+                      className="text-sm text-violet-400 hover:text-violet-300"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
                   <button
                     type="submit"
                     className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
@@ -429,24 +441,112 @@ function App() {
                 </form>
               )}
 
+              {/* Forgot Password Form */}
+              {authPage === 'forgot' && (
+                <>
+                  {forgotStep === 'email' ? (
+                    <form onSubmit={handleForgotPassword} className="space-y-4">
+                      <div className="mb-4">
+                        <p className="text-sm text-slate-400">
+                          Enter your email address and we'll help you reset your password.
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm text-slate-400 mb-2">Email</label>
+                        <input
+                          type="email"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                          placeholder="Enter your email"
+                          required
+                          autoFocus
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
+                      >
+                        Continue
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setAuthPage('signin'); setAuthError(''); setForgotEmail(''); }}
+                        className="w-full text-slate-400 hover:text-slate-300 text-sm"
+                      >
+                        Back to Sign In
+                      </button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleResetPassword} className="space-y-4">
+                      <div className="mb-4">
+                        <p className="text-sm text-slate-400">
+                          Reset password for: <span className="text-violet-400 font-medium">{forgotEmail}</span>
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm text-slate-400 mb-2">New Password</label>
+                        <input
+                          type="password"
+                          value={resetPassword.newPassword}
+                          onChange={(e) => setResetPassword({...resetPassword, newPassword: e.target.value})}
+                          className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                          placeholder="Enter new password"
+                          required
+                          minLength={6}
+                          autoFocus
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-slate-400 mb-2">Confirm New Password</label>
+                        <input
+                          type="password"
+                          value={resetPassword.confirmPassword}
+                          onChange={(e) => setResetPassword({...resetPassword, confirmPassword: e.target.value})}
+                          className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                          placeholder="Confirm new password"
+                          required
+                          minLength={6}
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
+                      >
+                        Reset Password
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setForgotStep('email'); setResetPassword({ newPassword: '', confirmPassword: '' }); }}
+                        className="w-full text-slate-400 hover:text-slate-300 text-sm"
+                      >
+                        Back
+                      </button>
+                    </form>
+                  )}
+                </>
+              )}
+
               {/* Footer Links */}
-              <div className="mt-6 text-center text-sm text-slate-400">
-                {authPage === 'signup' ? (
-                  <p>
-                    Already have an account?{' '}
-                    <button onClick={() => { setAuthPage('signin'); setAuthError(''); }} className="text-violet-400 hover:text-violet-300">
-                      Sign In
-                    </button>
-                  </p>
-                ) : (
-                  <p>
-                    Don't have an account?{' '}
-                    <button onClick={() => { setAuthPage('signup'); setAuthError(''); }} className="text-violet-400 hover:text-violet-300">
-                      Sign Up
-                    </button>
-                  </p>
-                )}
-              </div>
+              {authPage !== 'forgot' && (
+                <div className="mt-6 text-center text-sm text-slate-400">
+                  {authPage === 'signup' ? (
+                    <p>
+                      Already have an account?{' '}
+                      <button onClick={() => { setAuthPage('signin'); setAuthError(''); }} className="text-violet-400 hover:text-violet-300">
+                        Sign In
+                      </button>
+                    </p>
+                  ) : (
+                    <p>
+                      Don't have an account?{' '}
+                      <button onClick={() => { setAuthPage('signup'); setAuthError(''); }} className="text-violet-400 hover:text-violet-300">
+                        Sign Up
+                      </button>
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

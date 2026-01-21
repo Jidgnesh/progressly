@@ -105,6 +105,72 @@ function App() {
       setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
     };
 
+    const handleForgotPassword = (e) => {
+      e.preventDefault();
+      setAuthError('');
+      
+      if (!forgotEmail) {
+        setAuthError('Please enter your email address');
+        return;
+      }
+      
+      const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+      const user = users.find(u => u.email === forgotEmail);
+      
+      if (!user) {
+        setAuthError('No account found with this email address');
+        return;
+      }
+      
+      // Move to reset password step
+      setForgotStep('reset');
+      setAuthError('');
+    };
+
+    const handleResetPassword = (e) => {
+      e.preventDefault();
+      setAuthError('');
+      
+      if (!resetPassword.newPassword || !resetPassword.confirmPassword) {
+        setAuthError('Please fill in all fields');
+        return;
+      }
+      
+      if (resetPassword.newPassword.length < 6) {
+        setAuthError('Password must be at least 6 characters');
+        return;
+      }
+      
+      if (resetPassword.newPassword !== resetPassword.confirmPassword) {
+        setAuthError('Passwords do not match');
+        return;
+      }
+      
+      const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+      const userIndex = users.findIndex(u => u.email === forgotEmail);
+      
+      if (userIndex === -1) {
+        setAuthError('User not found');
+        return;
+      }
+      
+      // Update password
+      users[userIndex].password = resetPassword.newPassword;
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+      
+      // Show success message and redirect to sign in
+      setAuthError('');
+      setAuthPage('signin');
+      setForgotEmail('');
+      setResetPassword({ newPassword: '', confirmPassword: '' });
+      setForgotStep('email');
+      
+      // Show success message
+      setTimeout(() => {
+        alert('Password reset successfully! You can now sign in with your new password.');
+      }, 100);
+    };
+
     const handleLogout = () => {
       localStorage.removeItem(AUTH_KEY);
       setIsAuthenticated(false);

@@ -278,52 +278,71 @@ function App() {
     // ==================== EFFECTS ====================
     useEffect(() => {
       const loadData = async () => {
-        const authenticated = await checkAuth();
-        if (authenticated) {
-          if (useFirebase && currentUser) {
-            // Load from Firebase
-            setSyncing(true);
-            const tasksResult = await FirebaseService.getTasks(currentUser.uid);
-            const trashResult = await FirebaseService.getTrash(currentUser.uid);
-            
-            if (tasksResult.success) {
-              let loadedTasks = tasksResult.tasks || [];
-              loadedTasks = migrateIncompleteTasks(loadedTasks, today);
-              setTasks(loadedTasks);
-            }
-            
-            if (trashResult.success) {
-              setTrash(trashResult.trash || []);
-            }
-            
-            // Set up real-time listener
-            FirebaseService.subscribeToTasks(currentUser.uid, (tasks) => {
-              let loadedTasks = tasks || [];
-              loadedTasks = migrateIncompleteTasks(loadedTasks, today);
-              setTasks(loadedTasks);
-            });
-            
-            setSyncing(false);
-          } else {
-            // Load from localStorage
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        let loadedTasks = JSON.parse(saved);
-        loadedTasks = migrateIncompleteTasks(loadedTasks, today);
-        setTasks(loadedTasks);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedTasks));
-      }
-      const savedTrash = localStorage.getItem(TRASH_KEY);
-      if (savedTrash) {
-        setTrash(JSON.parse(savedTrash));
+        try {
+          const authenticated = await checkAuth();
+          if (authenticated) {
+            if (useFirebase && currentUser) {
+              // Load from Firebase
+              setSyncing(true);
+              try {
+                const tasksResult = await FirebaseService.getTasks(currentUser.uid);
+                const trashResult = await FirebaseService.getTrash(currentUser.uid);
+                
+                if (tasksResult.success) {
+                  let loadedTasks = tasksResult.tasks || [];
+                  loadedTasks = migrateIncompleteTasks(loadedTasks, today);
+                  setTasks(loadedTasks);
+                }
+                
+                if (trashResult.success) {
+                  setTrash(trashResult.trash || []);
+                }
+                
+                // Set up real-time listener
+                FirebaseService.subscribeToTasks(currentUser.uid, (tasks) => {
+                  let loadedTasks = tasks || [];
+                  loadedTasks = migrateIncompleteTasks(loadedTasks, today);
+                  setTasks(loadedTasks);
+                });
+              } catch (error) {
+                console.error('Error loading from Firebase:', error);
+                // Fallback to localStorage if Firebase fails
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                  let loadedTasks = JSON.parse(saved);
+                  loadedTasks = migrateIncompleteTasks(loadedTasks, today);
+                  setTasks(loadedTasks);
+                }
+                const savedTrash = localStorage.getItem(TRASH_KEY);
+                if (savedTrash) {
+                  setTrash(JSON.parse(savedTrash));
+                }
+              }
+              setSyncing(false);
+            } else {
+              // Load from localStorage
+              const saved = localStorage.getItem(STORAGE_KEY);
+              if (saved) {
+                let loadedTasks = JSON.parse(saved);
+                loadedTasks = migrateIncompleteTasks(loadedTasks, today);
+                setTasks(loadedTasks);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedTasks));
+              }
+              const savedTrash = localStorage.getItem(TRASH_KEY);
+              if (savedTrash) {
+                setTrash(JSON.parse(savedTrash));
+              }
             }
           }
-      }
-      setLoading(false);
+        } catch (error) {
+          console.error('Error in loadData:', error);
+        } finally {
+          setLoading(false);
+        }
       };
       
       loadData();
-    }, [isAuthenticated, useFirebase, currentUser]);
+    }, [isAuthenticated]);
   
     // ==================== STORAGE FUNCTIONS ====================
     const saveTasks = async (newTasks) => {

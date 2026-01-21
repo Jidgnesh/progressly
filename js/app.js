@@ -314,25 +314,35 @@ function App() {
 
             {/* Auth Form Card */}
             <div className="bg-slate-800 rounded-2xl p-6 shadow-xl">
-              {/* Tabs */}
-              <div className="flex gap-2 mb-6">
-                <button
-                  onClick={() => { setAuthPage('signin'); setAuthError(''); }}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
-                    authPage === 'signin' ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                  }`}
-                >
-                  Sign In
-                </button>
-                <button
-                  onClick={() => { setAuthPage('signup'); setAuthError(''); }}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
-                    authPage === 'signup' ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                  }`}
-                >
-                  Sign Up
-                </button>
-              </div>
+              {/* Tabs - Hide on forgot password page */}
+              {authPage !== 'forgot' && (
+                <div className="flex gap-2 mb-6">
+                  <button
+                    onClick={() => { setAuthPage('signin'); setAuthError(''); }}
+                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                      authPage === 'signin' ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                    }`}
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => { setAuthPage('signup'); setAuthError(''); }}
+                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                      authPage === 'signup' ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                    }`}
+                  >
+                    Sign Up
+                  </button>
+                </div>
+              )}
+
+              {/* Forgot Password Header */}
+              {authPage === 'forgot' && (
+                <div className="mb-6">
+                  <h2 className="text-xl font-bold text-white mb-2">Reset Password</h2>
+                  <p className="text-sm text-slate-400">Enter your email to reset your password</p>
+                </div>
+              )}
 
               {/* Error Message */}
               {authError && (
@@ -426,7 +436,13 @@ function App() {
                   <div className="text-right">
                     <button
                       type="button"
-                      onClick={() => { setAuthPage('forgot'); setAuthError(''); setForgotEmail(''); setForgotStep('email'); }}
+                      onClick={() => { 
+                        setAuthPage('forgot'); 
+                        setAuthError(''); 
+                        setForgotEmail(''); 
+                        setForgotStep('email');
+                        setResetPassword({ newPassword: '', confirmPassword: '' });
+                      }}
                       className="text-sm text-violet-400 hover:text-violet-300"
                     >
                       Forgot Password?

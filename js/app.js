@@ -173,7 +173,7 @@ function App() {
       setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
     };
 
-    const handleForgotPassword = (e) => {
+    const handleForgotPassword = async (e) => {
       e.preventDefault();
       setAuthError('');
       
@@ -182,6 +182,22 @@ function App() {
         return;
       }
       
+      // Try Firebase first if available
+      if (isFirebaseAvailable()) {
+        const result = await FirebaseService.resetPassword(forgotEmail);
+        if (result.success) {
+          setAuthError('');
+          alert('Password reset email sent! Check your inbox and follow the instructions.');
+          setAuthPage('signin');
+          setForgotEmail('');
+          return;
+        } else {
+          setAuthError(result.error || 'Failed to send reset email');
+          return;
+        }
+      }
+      
+      // Fallback to localStorage
       const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
       const user = users.find(u => u.email === forgotEmail);
       
@@ -195,7 +211,7 @@ function App() {
       setAuthError('');
     };
 
-    const handleResetPassword = (e) => {
+    const handleResetPassword = async (e) => {
       e.preventDefault();
       setAuthError('');
       
@@ -214,6 +230,14 @@ function App() {
         return;
       }
       
+      // Try Firebase first if available (but this requires user to be signed in)
+      // For Firebase, password reset is handled via email link
+      if (isFirebaseAvailable()) {
+        setAuthError('Please use the password reset link sent to your email. If you need to reset again, use the "Forgot Password" option.');
+        return;
+      }
+      
+      // Fallback to localStorage
       const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
       const userIndex = users.findIndex(u => u.email === forgotEmail);
       

@@ -252,14 +252,14 @@ const getProgressColor = (p) => {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
       date.setHours(0, 0, 0, 0);
-      
+
       // Count tasks that were completed on this day (using ID as proxy)
       const dayTasks = tasks.filter(t => {
         const taskDate = new Date(t.id);
         taskDate.setHours(0, 0, 0, 0);
         return taskDate.getTime() === date.getTime() && getTaskProgress(t) === 100;
       });
-      
+
       days.push({
         day: date.toLocaleDateString('en-US', { weekday: 'short' }),
         date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -268,3 +268,63 @@ const getProgressColor = (p) => {
     }
     return days;
   };
+
+// ============================================
+// THEME FUNCTIONS
+// ============================================
+
+const getSystemTheme = () => {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
+
+const getStoredThemePreference = () => {
+  return localStorage.getItem(THEME_KEY) || 'system';
+};
+
+const getEffectiveTheme = (preference) => {
+  if (preference === 'system') return getSystemTheme();
+  return preference;
+};
+
+const applyTheme = (preference) => {
+  const effective = getEffectiveTheme(preference);
+  if (effective === 'dark') {
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+};
+
+const cycleThemePreference = (current) => {
+  if (current === 'system') return 'light';
+  if (current === 'light') return 'dark';
+  return 'system';
+};
+
+const initTheme = () => {
+  const pref = getStoredThemePreference();
+  applyTheme(pref);
+  return pref;
+};
+
+// ============================================
+// GREETING FUNCTION
+// ============================================
+
+const getGreeting = (name) => {
+  const hour = new Date().getHours();
+  let timeGreeting;
+  if (hour < 12) timeGreeting = 'Good morning';
+  else if (hour < 18) timeGreeting = 'Good afternoon';
+  else timeGreeting = 'Good evening';
+  return name ? `${timeGreeting}, ${name}` : timeGreeting;
+};
+
+const getFormattedDate = () => {
+  return new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};

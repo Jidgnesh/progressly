@@ -17,6 +17,107 @@ const Icon = ({ name, size = 24, className = '', color }) => {
 };
 
 // ============================================
+// THEME TOGGLE COMPONENT
+// ============================================
+const ThemeToggle = ({ preference, onToggle }) => {
+  const [rotating, setRotating] = React.useState(false);
+
+  const handleClick = () => {
+    setRotating(true);
+    onToggle();
+    setTimeout(() => setRotating(false), 200);
+  };
+
+  const iconName = preference === 'light' ? 'Sun' : preference === 'dark' ? 'Moon' : 'Monitor';
+
+  return (
+    <button
+      onClick={handleClick}
+      className="pressable p-2 rounded-xl"
+      style={{ color: 'var(--text-secondary)' }}
+      aria-label={`Theme: ${preference}. Click to cycle.`}
+    >
+      <span className={`theme-icon inline-flex ${rotating ? 'theme-icon-rotate' : ''}`}>
+        <Icon name={iconName} size={20} />
+      </span>
+    </button>
+  );
+};
+
+// ============================================
+// TOAST COMPONENT
+// ============================================
+const Toast = ({ message, type = 'success', visible, onDismiss }) => {
+  const [exiting, setExiting] = React.useState(false);
+  const timerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!visible) return;
+    setExiting(false);
+
+    const startTimer = () => {
+      timerRef.current = setTimeout(() => {
+        setExiting(true);
+        setTimeout(onDismiss, 200);
+      }, 3000);
+    };
+
+    startTimer();
+
+    const handleVisChange = () => {
+      if (document.hidden) {
+        clearTimeout(timerRef.current);
+      } else {
+        startTimer();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisChange);
+    return () => {
+      clearTimeout(timerRef.current);
+      document.removeEventListener('visibilitychange', handleVisChange);
+    };
+  }, [visible, message]);
+
+  if (!visible) return null;
+
+  const accentColor = type === 'success' ? 'var(--priority-low)' : 'var(--priority-high)';
+
+  return (
+    <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-full max-w-[360px] px-4`}>
+      <div
+        className={`flex items-center gap-3 px-4 py-3 rounded-2xl ${exiting ? 'toast-exit' : 'toast-enter'}`}
+        style={{
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-elevated)',
+          backdropFilter: 'blur(12px)',
+        }}
+      >
+        <div
+          style={{
+            width: 3,
+            height: 24,
+            borderRadius: 2,
+            background: accentColor,
+            flexShrink: 0,
+          }}
+        />
+        <span className="text-sm font-medium flex-1" style={{ color: 'var(--text-primary)' }}>
+          {message}
+        </span>
+        <button
+          onClick={() => { setExiting(true); setTimeout(onDismiss, 200); }}
+          className="pressable p-1"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          <Icon name="X" size={16} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
 // LOGO COMPONENT
 // ============================================
 const Logo = ({ size = 24 }) => (
@@ -254,49 +355,63 @@ const AddTaskModal = ({ newTask, setNewTask, onAdd, onCancel }) => {
 // BOTTOM NAVIGATION
 // ============================================
 const BottomNav = ({ currentPage, setCurrentPage, trashCount }) => {
-    return (
-      <div className="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 px-4 py-3">
-        <div className="flex justify-around items-center">
-          <button 
-            onClick={() => setCurrentPage('home')} 
-            className={`flex flex-col items-center gap-1 ${currentPage === 'home' ? 'text-violet-400' : 'text-slate-400'}`}
-          >
-            <Icon name="Home" size={24}/>
-            <span className="text-xs">Home</span>
-          </button>
-          
-          <button 
-            onClick={() => setCurrentPage('history')} 
-            className={`flex flex-col items-center gap-1 ${currentPage === 'history' ? 'text-violet-400' : 'text-slate-400'}`}
-          >
-            <Icon name="History" size={24}/>
-            <span className="text-xs">History</span>
-          </button>
-          
-          <button 
-            onClick={() => setCurrentPage('statistics')} 
-            className={`flex flex-col items-center gap-1 ${currentPage === 'statistics' ? 'text-violet-400' : 'text-slate-400'}`}
-          >
-            <Icon name="BarChart3" size={24}/>
-            <span className="text-xs">Stats</span>
-          </button>
-          
-          <button 
-            onClick={() => setCurrentPage('trash')} 
-            className={`flex flex-col items-center gap-1 ${currentPage === 'trash' ? 'text-red-400' : 'text-slate-400'}`}
-          >
-            <div className="relative">
-              <Icon name="Trash2" size={24}/>
-              {trashCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-xs flex items-center justify-center">{trashCount}</span>
+  const tabs = [
+    { id: 'home', icon: 'Home' },
+    { id: 'history', icon: 'History' },
+    { id: 'trash', icon: 'Trash2' },
+  ];
+
+  const activeIndex = tabs.findIndex(t => t.id === currentPage);
+
+  return (
+    <div
+      className="fixed bottom-0 left-0 right-0 z-50"
+      style={{
+        background: 'var(--bg-nav)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        borderTop: '1px solid var(--border-card)',
+      }}
+    >
+      <div className="relative flex justify-around items-center px-4 py-3">
+        {/* Sliding pill indicator */}
+        <div
+          className="nav-pill absolute bottom-1 h-[3px] rounded-full"
+          style={{
+            width: 32,
+            background: 'var(--accent)',
+            left: `calc(${(activeIndex / tabs.length) * 100}% + ${100 / tabs.length / 2}% - 16px)`,
+          }}
+        />
+
+        {tabs.map((tab) => {
+          const isActive = currentPage === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setCurrentPage(tab.id)}
+              className="pressable relative flex flex-col items-center gap-1 p-2"
+              style={{
+                color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+                ...(isActive ? { filter: 'drop-shadow(0 0 8px var(--accent-glow))' } : {}),
+              }}
+            >
+              <Icon name={tab.icon} size={24} />
+              {tab.id === 'trash' && trashCount > 0 && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
+                  style={{ background: 'var(--priority-high)' }}
+                >
+                  {trashCount > 9 ? '9+' : trashCount}
+                </span>
               )}
-            </div>
-            <span className="text-xs">Trash</span>
-          </button>
-        </div>
+            </button>
+          );
+        })}
       </div>
-    );
-  };
+    </div>
+  );
+};
 
 // ============================================
 // TASK ITEM COMPONENT

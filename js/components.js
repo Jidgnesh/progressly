@@ -130,34 +130,114 @@ const Logo = ({ size = 24 }) => (
 // ============================================
 // PROGRESS CIRCLE COMPONENT
 // ============================================
-const ProgressCircle = ({ progress, size = 40, strokeWidth = 4 }) => {
+const ProgressCircle = ({ progress, size = 40, strokeWidth = 4, animate = false }) => {
   const radius = (size / 2) - (strokeWidth / 2);
   const circumference = radius * 2 * Math.PI;
-  const dashArray = `${(progress / 100) * circumference} ${circumference}`;
-  
+  const fillLength = (progress / 100) * circumference;
+
   return (
     <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
       <svg className="-rotate-90" style={{ width: size, height: size }}>
-        <circle 
-          cx={size/2} 
-          cy={size/2} 
-          r={radius} 
-          stroke="#334155" 
-          strokeWidth={strokeWidth} 
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="var(--divider)"
+          strokeWidth={strokeWidth}
           fill="none"
         />
-        <circle 
-          cx={size/2} 
-          cy={size/2} 
-          r={radius} 
-          stroke={getProgressColor(progress)} 
-          strokeWidth={strokeWidth} 
-          fill="none" 
-          strokeDasharray={dashArray}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={getProgressColor(progress)}
+          strokeWidth={strokeWidth}
+          fill="none"
+          strokeDasharray={`${fillLength} ${circumference}`}
           strokeLinecap="round"
+          className={animate ? 'progress-ring-circle' : ''}
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">{progress}</span>
+    </div>
+  );
+};
+
+// ============================================
+// STATS SUMMARY COMPONENT
+// ============================================
+const StatsSummary = ({ totalCount, completedCount, streak, allTasks, expanded, onToggle }) => {
+  const miniCards = [
+    { label: 'Tasks', value: totalCount },
+    { label: 'Done', value: completedCount },
+    { label: 'Streak', value: `${streak}d` },
+  ];
+
+  return (
+    <div>
+      <div className="grid grid-cols-3 gap-3">
+        {miniCards.map((card, i) => (
+          <div
+            key={card.label}
+            className="stagger-item rounded-2xl p-3 text-center"
+            style={{
+              animationDelay: `${i * 50}ms`,
+              background: 'var(--bg-card-60)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              border: '1px solid var(--border-input)',
+            }}
+          >
+            <div className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{card.value}</div>
+            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{card.label}</div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={onToggle}
+        className="pressable flex items-center gap-2 mt-3 mx-auto text-xs font-medium"
+        style={{ color: 'var(--text-muted)' }}
+      >
+        <span className="uppercase tracking-wider">Stats</span>
+        <Icon name={expanded ? 'ChevronUp' : 'ChevronDown'} size={14} />
+      </button>
+
+      <div
+        className="expand-content"
+        style={{ maxHeight: expanded ? '500px' : '0px', opacity: expanded ? 1 : 0 }}
+      >
+        <div className="pt-4 space-y-4">
+          <div>
+            <h4 className="text-xs font-medium uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>By Category</h4>
+            <div className="space-y-2">
+              {Object.entries(getCategoryStats(allTasks)).map(([cat, stats]) => (
+                stats.total > 0 && (
+                  <div key={cat} className="flex items-center justify-between">
+                    <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{cat}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--divider)' }}>
+                        <div className="h-full rounded-full" style={{ width: `${stats.avgProgress}%`, background: getProgressColor(stats.avgProgress) }} />
+                      </div>
+                      <span className="text-xs font-medium w-8 text-right" style={{ color: 'var(--text-muted)' }}>{stats.avgProgress}%</span>
+                    </div>
+                  </div>
+                )
+              ))}
+            </div>
+          </div>
+          <div>
+            <h4 className="text-xs font-medium uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Monthly Trends</h4>
+            <div className="flex items-end gap-1 h-16">
+              {getMonthlyTrends(allTasks).map((trend) => (
+                <div key={`${trend.month}-${trend.year}`} className="flex-1 flex flex-col items-center gap-1">
+                  <div className="w-full rounded-t" style={{ height: `${Math.max(4, (trend.avgProgress / 100) * 48)}px`, background: trend.avgProgress > 0 ? 'var(--accent)' : 'var(--divider)', opacity: trend.avgProgress > 0 ? 0.7 : 0.3 }} />
+                  <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{trend.month}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -170,25 +250,26 @@ const DeleteConfirmModal = ({ task, onCancel, onConfirm }) => {
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onCancel}>
-      <div className="bg-slate-800 rounded-2xl p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-center w-16 h-16 bg-red-500/20 rounded-full mx-auto mb-4">
-          <Icon name="Trash2" size={32} color="#ef4444"/>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overlay-enter"
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={onCancel}>
+      <div className="modal-enter rounded-2xl p-6 max-w-sm w-full"
+        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-elevated)', transformOrigin: 'center' }}
+        onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4" style={{ background: 'rgba(239, 68, 68, 0.15)' }}>
+          <Icon name="Trash2" size={32} color="var(--priority-high)" />
         </div>
-        <h3 className="text-xl font-bold text-center mb-2">Delete Task?</h3>
-        <p className="text-slate-400 text-center mb-2">"{task.title}"</p>
+        <h3 className="text-xl font-bold text-center mb-2" style={{ color: 'var(--text-primary)' }}>Delete Task?</h3>
+        <p className="text-center mb-2" style={{ color: 'var(--text-secondary)' }}>"{task.title}"</p>
         {hasSubtasks && (
-          <p className="text-amber-400 text-sm text-center mb-4">
-            <Icon name="AlertTriangle" size={14} className="inline mr-1"/>
+          <p className="text-sm text-center mb-4" style={{ color: '#f59e0b' }}>
+            <Icon name="AlertTriangle" size={14} className="inline mr-1" />
             This will also delete {task.subtasks.length} subtask{task.subtasks.length > 1 ? 's' : ''}
           </p>
         )}
-        <p className="text-slate-500 text-sm text-center mb-6">
-          You can restore this task from the trash later.
-        </p>
+        <p className="text-sm text-center mb-6" style={{ color: 'var(--text-muted)' }}>You can restore this task from the trash later.</p>
         <div className="flex gap-3">
-          <button onClick={onCancel} className="flex-1 py-3 rounded-xl bg-slate-700 font-medium hover:bg-slate-600">Cancel</button>
-          <button onClick={onConfirm} className="flex-1 py-3 rounded-xl bg-red-600 font-medium hover:bg-red-500">Delete</button>
+          <button onClick={onCancel} className="pressable flex-1 py-3 rounded-xl font-medium" style={{ background: 'var(--divider)', color: 'var(--text-primary)' }}>Cancel</button>
+          <button onClick={onConfirm} className="pressable flex-1 py-3 rounded-xl font-medium text-white" style={{ background: 'var(--priority-high)' }}>Delete</button>
         </div>
       </div>
     </div>
@@ -200,74 +281,61 @@ const DeleteConfirmModal = ({ task, onCancel, onConfirm }) => {
 // ============================================
 const EditTaskModal = ({ editForm, setEditForm, onSave, onCancel }) => {
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-end" onClick={onCancel}>
-      <div className="bg-slate-800 w-full rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">Edit Task</h2>
-          <button onClick={onCancel} className="text-slate-400 text-2xl">×</button>
+    <div className="fixed inset-0 z-50 flex items-end overlay-enter"
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={onCancel}>
+      <div className="drawer-enter w-full rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto"
+        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-elevated)' }}
+        onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-center mb-4">
+          <div className="w-10 h-1 rounded-full" style={{ background: 'var(--text-muted)' }} />
         </div>
-        <input 
-          type="text" 
-          placeholder="Task name" 
-          value={editForm.title} 
-          onChange={(e) => setEditForm({...editForm, title: e.target.value})} 
-          className="w-full bg-slate-700 rounded-xl px-4 py-4 mb-4 outline-none text-lg" 
-          autoFocus
-        />
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Edit Task</h2>
+          <button onClick={onCancel} className="pressable text-2xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
+        </div>
+        <input type="text" placeholder="Task name" value={editForm.title}
+          onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+          className="w-full rounded-xl px-4 py-4 mb-4 outline-none text-lg"
+          style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }} autoFocus />
         <div className="mb-4">
-          <label className="text-sm text-slate-400 mb-2 block">Category</label>
+          <label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>Category</label>
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map(c => (
-              <button 
-                key={c} 
-                onClick={() => setEditForm({...editForm, category: c})} 
-                className={`px-4 py-2 rounded-xl text-sm font-medium ${editForm.category===c?'bg-violet-600':'bg-slate-700 text-slate-400'}`}
-              >
+              <button key={c} onClick={() => setEditForm({ ...editForm, category: c })}
+                className="pressable px-4 py-2 rounded-xl text-sm font-medium"
+                style={{ background: editForm.category === c ? 'var(--accent)' : 'var(--divider)', color: editForm.category === c ? 'white' : 'var(--text-secondary)' }}>
                 {c}
               </button>
             ))}
           </div>
         </div>
         <div className="mb-4">
-          <label className="text-sm text-slate-400 mb-2 block">Priority</label>
+          <label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>Priority</label>
           <div className="flex gap-2">
-            {Object.entries(PRIORITIES).map(([k,c]) => (
-              <button 
-                key={k} 
-                onClick={() => setEditForm({...editForm, priority: k})} 
-                className={`flex-1 py-3 rounded-xl capitalize font-medium ${editForm.priority===k?'ring-2 ring-offset-2 ring-offset-slate-800':'opacity-50'}`} 
-                style={{backgroundColor:c+'33',color:c}}
-              >
+            {Object.entries(PRIORITIES).map(([k, c]) => (
+              <button key={k} onClick={() => setEditForm({ ...editForm, priority: k })}
+                className="pressable flex-1 py-3 rounded-xl capitalize font-medium"
+                style={{ backgroundColor: c + '33', color: c, ...(editForm.priority === k ? { boxShadow: `0 0 0 2px ${c}` } : { opacity: 0.5 }) }}>
                 {k}
               </button>
             ))}
           </div>
         </div>
         <div className="mb-6">
-          <label className="text-sm text-slate-400 mb-2 block">Due Date (Optional)</label>
-          <input 
-            type="date" 
-            value={getDateInputValue(editForm.dueDate)} 
-            onChange={(e) => setEditForm({...editForm, dueDate: e.target.value || ''})} 
-            className="w-full bg-slate-700 rounded-xl px-4 py-3 outline-none text-white"
-            min={new Date().toISOString().split('T')[0]}
-          />
+          <label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>Due Date (Optional)</label>
+          <input type="date" value={getDateInputValue(editForm.dueDate)}
+            onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value || '' })}
+            className="w-full rounded-xl px-4 py-3 outline-none"
+            style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
+            min={new Date().toISOString().split('T')[0]} />
           {editForm.dueDate && (
-            <button 
-              onClick={() => setEditForm({...editForm, dueDate: ''})} 
-              className="mt-2 text-xs text-red-400 hover:text-red-300"
-            >
-              Clear due date
-            </button>
+            <button onClick={() => setEditForm({ ...editForm, dueDate: '' })}
+              className="pressable mt-2 text-xs" style={{ color: 'var(--priority-high)' }}>Clear due date</button>
           )}
         </div>
-        <button 
-          onClick={onSave} 
-          disabled={!editForm.title.trim()} 
-          className="w-full bg-violet-600 py-4 rounded-xl font-bold text-lg disabled:opacity-50"
-        >
-          Save Changes
-        </button>
+        <button onClick={onSave} disabled={!editForm.title.trim()}
+          className="pressable w-full py-4 rounded-xl font-bold text-lg text-white disabled:opacity-40"
+          style={{ background: 'var(--accent)' }}>Save Changes</button>
       </div>
     </div>
   );
@@ -278,74 +346,61 @@ const EditTaskModal = ({ editForm, setEditForm, onSave, onCancel }) => {
 // ============================================
 const AddTaskModal = ({ newTask, setNewTask, onAdd, onCancel }) => {
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-end" onClick={onCancel}>
-      <div className="bg-slate-800 w-full rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">Add Task</h2>
-          <button onClick={onCancel} className="text-slate-400 text-2xl">×</button>
+    <div className="fixed inset-0 z-50 flex items-end overlay-enter"
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={onCancel}>
+      <div className="drawer-enter w-full rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto"
+        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-elevated)' }}
+        onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-center mb-4">
+          <div className="w-10 h-1 rounded-full" style={{ background: 'var(--text-muted)' }} />
         </div>
-        <input 
-          type="text" 
-          placeholder="What's your task?" 
-          value={newTask.title} 
-          onChange={(e) => setNewTask({...newTask, title: e.target.value})} 
-          className="w-full bg-slate-700 rounded-xl px-4 py-4 mb-4 outline-none text-lg" 
-          autoFocus
-        />
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Add Task</h2>
+          <button onClick={onCancel} className="pressable text-2xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
+        </div>
+        <input type="text" placeholder="What's your task?" value={newTask.title}
+          onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+          className="w-full rounded-xl px-4 py-4 mb-4 outline-none text-lg"
+          style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }} autoFocus />
         <div className="mb-4">
-          <label className="text-sm text-slate-400 mb-2 block">Category</label>
+          <label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>Category</label>
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map(c => (
-              <button 
-                key={c} 
-                onClick={() => setNewTask({...newTask, category: c})} 
-                className={`px-4 py-2 rounded-xl text-sm font-medium ${newTask.category===c?'bg-violet-600':'bg-slate-700 text-slate-400'}`}
-              >
+              <button key={c} onClick={() => setNewTask({ ...newTask, category: c })}
+                className="pressable px-4 py-2 rounded-xl text-sm font-medium"
+                style={{ background: newTask.category === c ? 'var(--accent)' : 'var(--divider)', color: newTask.category === c ? 'white' : 'var(--text-secondary)' }}>
                 {c}
               </button>
             ))}
           </div>
         </div>
         <div className="mb-4">
-          <label className="text-sm text-slate-400 mb-2 block">Priority</label>
+          <label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>Priority</label>
           <div className="flex gap-2">
-            {Object.entries(PRIORITIES).map(([k,c]) => (
-              <button 
-                key={k} 
-                onClick={() => setNewTask({...newTask, priority: k})} 
-                className={`flex-1 py-3 rounded-xl capitalize font-medium ${newTask.priority===k?'ring-2 ring-offset-2 ring-offset-slate-800':'opacity-50'}`} 
-                style={{backgroundColor:c+'33',color:c}}
-              >
+            {Object.entries(PRIORITIES).map(([k, c]) => (
+              <button key={k} onClick={() => setNewTask({ ...newTask, priority: k })}
+                className="pressable flex-1 py-3 rounded-xl capitalize font-medium"
+                style={{ backgroundColor: c + '33', color: c, ...(newTask.priority === k ? { boxShadow: `0 0 0 2px ${c}` } : { opacity: 0.5 }) }}>
                 {k}
               </button>
             ))}
           </div>
         </div>
         <div className="mb-6">
-          <label className="text-sm text-slate-400 mb-2 block">Due Date (Optional)</label>
-          <input 
-            type="date" 
-            value={getDateInputValue(newTask.dueDate)} 
-            onChange={(e) => setNewTask({...newTask, dueDate: e.target.value || ''})} 
-            className="w-full bg-slate-700 rounded-xl px-4 py-3 outline-none text-white"
-            min={new Date().toISOString().split('T')[0]}
-          />
+          <label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>Due Date (Optional)</label>
+          <input type="date" value={getDateInputValue(newTask.dueDate)}
+            onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value || '' })}
+            className="w-full rounded-xl px-4 py-3 outline-none"
+            style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
+            min={new Date().toISOString().split('T')[0]} />
           {newTask.dueDate && (
-            <button 
-              onClick={() => setNewTask({...newTask, dueDate: ''})} 
-              className="mt-2 text-xs text-red-400 hover:text-red-300"
-            >
-              Clear due date
-            </button>
+            <button onClick={() => setNewTask({ ...newTask, dueDate: '' })}
+              className="pressable mt-2 text-xs" style={{ color: 'var(--priority-high)' }}>Clear due date</button>
           )}
         </div>
-        <button 
-          onClick={onAdd} 
-          disabled={!newTask.title.trim()} 
-          className="w-full bg-violet-600 py-4 rounded-xl font-bold text-lg disabled:opacity-50"
-        >
-          Add Task
-        </button>
+        <button onClick={onAdd} disabled={!newTask.title.trim()}
+          className="pressable w-full py-4 rounded-xl font-bold text-lg text-white disabled:opacity-40"
+          style={{ background: 'var(--accent)' }}>Add Task</button>
       </div>
     </div>
   );
@@ -416,161 +471,116 @@ const BottomNav = ({ currentPage, setCurrentPage, trashCount }) => {
 // ============================================
 // TASK ITEM COMPONENT
 // ============================================
-const TaskItem = ({ 
-  task, 
-  isExpanded, 
-  expandedSubtask,
-  addingSubtaskTo,
-  newSubtask,
-  setNewSubtask,
-  onToggleExpand,
-  onToggleSubtask,
-  onEdit,
-  onDelete,
-  onUpdateProgress,
-  onAddSubtask,
-  onDeleteSubtask,
-  onUpdateSubtaskProgress,
-  onToggleAddSubtask,
-  searchQuery
+const TaskItem = ({
+  task, isExpanded, expandedSubtask, addingSubtaskTo, newSubtask, setNewSubtask,
+  onToggleExpand, onToggleSubtask, onEdit, onDelete, onUpdateProgress,
+  onAddSubtask, onDeleteSubtask, onUpdateSubtaskProgress, onToggleAddSubtask, searchQuery
 }) => {
   const taskProgress = getTaskProgress(task);
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
-  
-  // Highlight search matches
+  const overdue = task.dueDate && isOverdue(task.dueDate) && taskProgress < 100;
+
   const highlightText = (text, query) => {
     if (!query || !text) return text;
     const parts = text.split(new RegExp(`(${query})`, 'gi'));
-    return parts.map((part, i) => 
-      part.toLowerCase() === query.toLowerCase() 
-        ? React.createElement('mark', { key: i, className: 'bg-yellow-400/30 text-yellow-200 rounded px-0.5' }, part)
+    return parts.map((part, i) =>
+      part.toLowerCase() === query.toLowerCase()
+        ? React.createElement('mark', { key: i, style: { background: 'rgba(250, 204, 21, 0.3)', color: '#fde047', borderRadius: 2, padding: '0 2px' } }, part)
         : part
     );
   };
 
-  const overdue = task.dueDate && isOverdue(task.dueDate) && taskProgress < 100;
-  
+  const priorityColor = PRIORITIES[task.priority] || 'var(--text-muted)';
+
   return (
-    <div 
-      onClick={(e) => e.stopPropagation()} 
-      className={`bg-slate-800 rounded-xl overflow-hidden ${taskProgress===100?'opacity-70':''} ${overdue?'ring-2 ring-red-500/50':''}`}
+    <div
+      className={`task-card rounded-2xl ${taskProgress === 100 ? 'opacity-60' : ''}`}
+      style={{
+        '--priority-color': priorityColor,
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border-card)',
+        ...(overdue ? { boxShadow: '0 0 0 2px rgba(239, 68, 68, 0.2)' } : {}),
+      }}
     >
-      {/* Task Header */}
-      <div className="p-4 flex items-center gap-3 cursor-pointer" onClick={onToggleExpand}>
-        <ProgressCircle progress={taskProgress} size={40} strokeWidth={4} />
-        
-        {/* Task Info */}
+      <div className="pressable-card p-4 flex items-center gap-3 cursor-pointer" onClick={onToggleExpand}>
+        <ProgressCircle progress={taskProgress} size={36} strokeWidth={3} />
         <div className="flex-1 min-w-0">
-          <p className={`font-medium ${taskProgress===100?'line-through text-slate-500':''}`}>
+          <p className={`font-medium text-base ${taskProgress === 100 ? 'line-through' : ''}`}
+            style={{ color: taskProgress === 100 ? 'var(--text-muted)' : 'var(--text-primary)' }}>
             {searchQuery ? highlightText(task.title, searchQuery) : task.title}
           </p>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <span className="text-xs px-2 py-0.5 rounded-full" style={{backgroundColor:PRIORITIES[task.priority]+'22',color:PRIORITIES[task.priority]}}>{task.priority}</span>
-            <span className="text-xs text-slate-500">{task.category}</span>
-            {hasSubtasks && <span className="text-xs text-violet-400">{task.subtasks.length} subtasks</span>}
-            {task.migratedFrom && (
-              <span className="text-xs text-amber-400 flex items-center gap-1">
-                <Icon name="ArrowRight" size={10}/> from {MONTHS[task.migratedFrom.month]}
-              </span>
-            )}
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{task.category}</span>
             {task.dueDate && (
-              <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                isOverdue(task.dueDate) && taskProgress < 100 
-                  ? 'bg-red-500/20 text-red-400' 
-                  : isDueToday(task.dueDate)
-                  ? 'bg-orange-500/20 text-orange-400'
-                  : 'bg-blue-500/20 text-blue-400'
-              }`}>
-                <Icon name={isOverdue(task.dueDate) && taskProgress < 100 ? "AlertCircle" : "Calendar"} size={10}/>
+              <span className="text-xs flex items-center gap-1"
+                style={{ color: overdue ? 'var(--priority-high)' : isDueToday(task.dueDate) ? '#f97316' : '#60a5fa' }}>
+                <Icon name={overdue ? "AlertCircle" : "Calendar"} size={10} />
                 {formatDate(task.dueDate)}
               </span>
             )}
           </div>
         </div>
-        
-        {/* Actions */}
-        <div className="flex items-center gap-1">
-          <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-2 text-slate-500 hover:text-violet-400">
-            <Icon name="Pencil" size={16}/>
-          </button>
-          {isExpanded ? <Icon name="ChevronUp" size={18} color="#94a3b8"/> : <Icon name="ChevronDown" size={18} color="#94a3b8"/>}
-          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 text-slate-500 hover:text-red-400">
-            <Icon name="Trash2" size={18}/>
-          </button>
-        </div>
+        <Icon name={isExpanded ? 'ChevronUp' : 'ChevronDown'} size={18} color="var(--text-muted)" />
       </div>
-      
-      {/* Progress Bar */}
+
       <div className="px-4 pb-2">
-        <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-          <div className="h-full rounded-full transition-all" style={{width:`${taskProgress}%`,backgroundColor:getProgressColor(taskProgress)}}/>
+        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--divider)' }}>
+          <div className="h-full rounded-full" style={{ width: `${taskProgress}%`, background: getProgressColor(taskProgress), transition: 'width 300ms var(--ease-out)' }} />
         </div>
       </div>
 
-      {/* Expanded Content */}
       {isExpanded && (
-        <div className="px-4 pb-4 pt-2 border-t border-slate-700 mt-2">
-          {/* Subtasks Section */}
+        <div className="px-4 pb-4 pt-2" style={{ borderTop: '1px solid var(--border-card)' }}>
           <div className="mb-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-slate-400">Subtasks</span>
-              <button onClick={onToggleAddSubtask} className="text-xs bg-violet-600 px-3 py-1 rounded-lg flex items-center gap-1">
-                <Icon name="Plus" size={14}/> Add
+              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Subtasks</span>
+              <button onClick={onToggleAddSubtask} className="pressable text-xs px-3 py-1 rounded-lg flex items-center gap-1" style={{ background: 'var(--accent)', color: 'white' }}>
+                <Icon name="Plus" size={14} /> Add
               </button>
             </div>
-            
-            {/* Add Subtask Input */}
+
             {addingSubtaskTo === task.id && (
               <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  placeholder="Subtask name..."
-                  value={newSubtask}
-                  onChange={(e) => setNewSubtask(e.target.value)}
+                <input type="text" placeholder="Subtask name..." value={newSubtask} onChange={(e) => setNewSubtask(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && onAddSubtask()}
-                  className="flex-1 bg-slate-700 rounded-lg px-3 py-2 text-sm outline-none"
-                  autoFocus
-                />
-                <button onClick={onAddSubtask} className="bg-violet-600 px-4 rounded-lg text-sm">Add</button>
+                  className="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
+                  style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
+                  autoFocus />
+                <button onClick={onAddSubtask} className="pressable px-4 rounded-lg text-sm text-white" style={{ background: 'var(--accent)' }}>Add</button>
               </div>
             )}
 
-            {/* Subtask List */}
             {hasSubtasks ? (
               <div className="space-y-2">
                 {task.subtasks.map(st => (
-                  <div key={st.id} className="bg-slate-700/50 rounded-lg px-3 py-2">
+                  <div key={st.id} className="rounded-lg px-3 py-2" style={{ background: 'var(--bg-input)' }}>
                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => onToggleSubtask(st.id)}>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <span className={`text-sm truncate ${st.progress===100?'line-through text-slate-500':''}`}>{st.title}</span>
-                          <span className="text-xs font-bold ml-2" style={{color:getProgressColor(st.progress)}}>{st.progress}</span>
+                          <span className={`text-sm truncate ${st.progress === 100 ? 'line-through' : ''}`}
+                            style={{ color: st.progress === 100 ? 'var(--text-muted)' : 'var(--text-primary)' }}>{st.title}</span>
+                          <span className="text-xs font-bold ml-2" style={{ color: getProgressColor(st.progress) }}>{st.progress}</span>
                         </div>
-                        <div className="h-1 bg-slate-600 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all" style={{width:`${st.progress}%`,backgroundColor:getProgressColor(st.progress)}}/>
+                        <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--divider)' }}>
+                          <div className="h-full rounded-full" style={{ width: `${st.progress}%`, background: getProgressColor(st.progress), transition: 'width 200ms var(--ease-out)' }} />
                         </div>
                       </div>
-                      <button onClick={(e) => { e.stopPropagation(); onDeleteSubtask(st.id); }} className="w-6 h-6 text-slate-500 hover:text-red-400 flex items-center justify-center">
-                        <Icon name="Trash2" size={12}/>
+                      <button onClick={(e) => { e.stopPropagation(); onDeleteSubtask(st.id); }} className="pressable w-6 h-6 flex items-center justify-center" style={{ color: 'var(--text-muted)' }}>
+                        <Icon name="Trash2" size={12} />
                       </button>
                     </div>
                     {expandedSubtask === st.id && (
-                      <div className="flex items-center justify-center gap-3 mt-2 pt-2 border-t border-slate-600">
-                        <button onClick={() => onUpdateSubtaskProgress(st.id, Math.max(0, st.progress - 10))} className="w-7 h-7 bg-slate-600 rounded flex items-center justify-center hover:bg-slate-500">
-                          <Icon name="Minus" size={14}/>
+                      <div className="flex items-center justify-center gap-3 mt-2 pt-2" style={{ borderTop: '1px solid var(--border-card)' }}>
+                        <button onClick={() => onUpdateSubtaskProgress(st.id, Math.max(0, st.progress - 10))} className="pressable w-7 h-7 rounded flex items-center justify-center" style={{ background: 'var(--divider)' }}>
+                          <Icon name="Minus" size={14} />
                         </button>
-                        <input 
-                          type="number" 
-                          min="0" 
-                          max="100" 
-                          value={st.progress} 
+                        <input type="number" min="0" max="100" value={st.progress}
                           onChange={(e) => onUpdateSubtaskProgress(st.id, Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-14 h-7 bg-slate-600 rounded text-center text-sm font-bold outline-none focus:ring-1 focus:ring-violet-500"
-                          style={{color:getProgressColor(st.progress)}}
-                        />
-                        <button onClick={() => onUpdateSubtaskProgress(st.id, Math.min(100, st.progress + 10))} className="w-7 h-7 bg-slate-600 rounded flex items-center justify-center hover:bg-slate-500">
-                          <Icon name="Plus" size={14}/>
+                          className="w-14 h-7 rounded text-center text-sm font-bold outline-none"
+                          style={{ background: 'var(--divider)', color: getProgressColor(st.progress) }} />
+                        <button onClick={() => onUpdateSubtaskProgress(st.id, Math.min(100, st.progress + 10))} className="pressable w-7 h-7 rounded flex items-center justify-center" style={{ background: 'var(--divider)' }}>
+                          <Icon name="Plus" size={14} />
                         </button>
                       </div>
                     )}
@@ -578,40 +588,36 @@ const TaskItem = ({
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-500 text-center py-3">No subtasks yet</p>
+              <p className="text-sm text-center py-3" style={{ color: 'var(--text-muted)' }}>No subtasks yet</p>
             )}
           </div>
 
-          {/* Manual Progress (only if no subtasks) */}
           {!hasSubtasks && (
             <div>
-              <div className="text-sm text-slate-400 mb-3">Manual Progress</div>
+              <div className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>Manual Progress</div>
               <div className="flex gap-2 mb-3">
-                {[0,25,50,75,100].map(v => (
-                  <button 
-                    key={v} 
-                    onClick={() => onUpdateProgress(v)} 
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium ${task.progress===v?'ring-2 ring-violet-500':'bg-slate-700'}`} 
-                    style={task.progress===v?{backgroundColor:getProgressColor(v)}:{}}
-                  >
+                {[0, 25, 50, 75, 100].map(v => (
+                  <button key={v} onClick={() => onUpdateProgress(v)} className="pressable flex-1 py-2 rounded-lg text-sm font-medium"
+                    style={{ background: task.progress === v ? getProgressColor(v) : 'var(--divider)', color: task.progress === v ? 'white' : 'var(--text-secondary)',
+                      ...(task.progress === v ? { boxShadow: '0 0 0 2px var(--accent)' } : {}) }}>
                     {v}%
                   </button>
                 ))}
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={() => onUpdateProgress(task.progress - 5)} className="w-10 h-10 bg-slate-700 rounded-xl flex items-center justify-center">
-                  <Icon name="Minus" size={18}/>
+                <button onClick={() => onUpdateProgress(task.progress - 5)} className="pressable w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--divider)' }}>
+                  <Icon name="Minus" size={18} />
                 </button>
-                <input type="range" min="0" max="100" value={task.progress} onChange={(e) => onUpdateProgress(parseInt(e.target.value))} className="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-violet-500"/>
-                <button onClick={() => onUpdateProgress(task.progress + 5)} className="w-10 h-10 bg-slate-700 rounded-xl flex items-center justify-center">
-                  <Icon name="PlusCircle" size={18}/>
+                <input type="range" min="0" max="100" value={task.progress} onChange={(e) => onUpdateProgress(parseInt(e.target.value))} className="flex-1 h-2 rounded-lg appearance-none cursor-pointer" />
+                <button onClick={() => onUpdateProgress(task.progress + 5)} className="pressable w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--divider)' }}>
+                  <Icon name="Plus" size={18} />
                 </button>
               </div>
             </div>
           )}
 
           {hasSubtasks && (
-            <p className="text-xs text-slate-500 text-center mt-2">Progress auto-calculated from subtasks</p>
+            <p className="text-xs text-center mt-2" style={{ color: 'var(--text-muted)' }}>Progress auto-calculated from subtasks</p>
           )}
         </div>
       )}
@@ -624,33 +630,35 @@ const TaskItem = ({
 // ============================================
 const TrashItem = ({ task, onRestore, onDelete }) => {
   const taskProgress = getTaskProgress(task);
-  const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+  const priorityColor = PRIORITIES[task.priority] || 'var(--text-muted)';
 
   return (
-    <div className="bg-slate-800 rounded-xl p-4">
+    <div className="task-card rounded-2xl p-4"
+      style={{ '--priority-color': priorityColor, background: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
       <div className="flex items-start gap-3">
         <div className="opacity-50">
-          <ProgressCircle progress={taskProgress} size={40} strokeWidth={4} />
+          <ProgressCircle progress={taskProgress} size={36} strokeWidth={3} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-slate-300">{task.title}</p>
+          <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>{task.title}</p>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <span className="text-xs px-2 py-0.5 rounded-full" style={{backgroundColor:PRIORITIES[task.priority]+'22',color:PRIORITIES[task.priority]}}>{task.priority}</span>
-            <span className="text-xs text-slate-500">{task.category}</span>
-            {hasSubtasks && <span className="text-xs text-slate-500">{task.subtasks.length} subtasks</span>}
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{task.category}</span>
+            {task.subtasks && task.subtasks.length > 0 && (
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{task.subtasks.length} subtask{task.subtasks.length > 1 ? 's' : ''}</span>
+            )}
           </div>
-          <p className="text-xs text-slate-500 mt-2">
-            <Icon name="Clock" size={12} className="inline mr-1"/>
+          <p className="text-xs mt-2 flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+            <Icon name="Clock" size={12} />
             Deleted {formatDeletedTime(task.deletedAt)}
           </p>
         </div>
       </div>
-      <div className="flex gap-2 mt-4 pt-3 border-t border-slate-700">
-        <button onClick={onRestore} className="flex-1 py-2 rounded-lg bg-violet-600 text-sm font-medium flex items-center justify-center gap-2 hover:bg-violet-500">
-          <Icon name="RotateCcw" size={16}/> Restore
+      <div className="flex gap-2 mt-4 pt-3" style={{ borderTop: '1px solid var(--border-card)' }}>
+        <button onClick={onRestore} className="pressable flex-1 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 text-white" style={{ background: 'var(--accent)' }}>
+          <Icon name="RotateCcw" size={16} /> Restore
         </button>
-        <button onClick={onDelete} className="flex-1 py-2 rounded-lg bg-slate-700 text-sm font-medium flex items-center justify-center gap-2 hover:bg-red-600">
-          <Icon name="X" size={16}/> Delete Forever
+        <button onClick={onDelete} className="pressable flex-1 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: 'var(--divider)', color: 'var(--text-primary)' }}>
+          <Icon name="X" size={16} /> Delete Forever
         </button>
       </div>
     </div>

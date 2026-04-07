@@ -4,7 +4,7 @@
 function App() {
     const { useState, useEffect } = React;
     const today = new Date();
-  
+
     // ==================== STATE ====================
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [authPage, setAuthPage] = useState('signin'); // 'signin', 'signup', 'forgot'
@@ -41,15 +41,40 @@ function App() {
       newPassword: false,
       confirmNewPassword: false
     });
-    const [successMessage, setSuccessMessage] = useState('');
 
-    // Auto-dismiss success message after 5 seconds
+    // Toast state (replaces successMessage)
+    const [toast, setToast] = useState({ message: '', type: 'success', visible: false });
+
+    // Theme state
+    const [themePreference, setThemePreference] = useState(() => initTheme());
+    const [showStats, setShowStats] = useState(false);
+
+    // Toast functions
+    const showToast = (message, type = 'success') => {
+      setToast({ message, type, visible: true });
+    };
+    const dismissToast = () => {
+      setToast(prev => ({ ...prev, visible: false }));
+    };
+
+    // Theme toggle handler
+    const handleThemeToggle = () => {
+      const next = cycleThemePreference(themePreference);
+      setThemePreference(next);
+      localStorage.setItem(THEME_KEY, next);
+      document.body.classList.add('theme-transitioning');
+      applyTheme(next);
+      setTimeout(() => document.body.classList.remove('theme-transitioning'), 300);
+    };
+
+    // System theme change listener
     useEffect(() => {
-      if (successMessage) {
-        const timer = setTimeout(() => setSuccessMessage(''), 5000);
-        return () => clearTimeout(timer);
-      }
-    }, [successMessage]);
+      if (themePreference !== 'system') return;
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = () => applyTheme('system');
+      mq.addEventListener('change', handler);
+      return () => mq.removeEventListener('change', handler);
+    }, [themePreference]);
 
     // Auto-complete email with @gmail.com if no @ present
     const completeEmail = (email) => {
@@ -63,14 +88,14 @@ function App() {
     // Check if Firebase is available
     const isFirebaseAvailable = () => {
       try {
-        const isAvailable = typeof firebase !== 'undefined' && 
-                           firebase.apps && 
+        const isAvailable = typeof firebase !== 'undefined' &&
+                           firebase.apps &&
                            firebase.apps.length > 0 &&
                            typeof FIREBASE_CONFIG !== 'undefined' &&
-                           FIREBASE_CONFIG && 
-                           FIREBASE_CONFIG.apiKey && 
+                           FIREBASE_CONFIG &&
+                           FIREBASE_CONFIG.apiKey &&
                            FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY';
-        
+
         if (!isAvailable) {
           console.log('Firebase not available:', {
             firebaseDefined: typeof firebase !== 'undefined',
@@ -79,14 +104,14 @@ function App() {
             apiKey: FIREBASE_CONFIG?.apiKey ? 'present' : 'missing'
           });
         }
-        
+
         return isAvailable;
       } catch (error) {
         console.error('Error checking Firebase availability:', error);
         return false;
       }
     };
-  
+
     // ==================== AUTHENTICATION FUNCTIONS ====================
     const checkAuth = async () => {
       // Check Firebase first if available
@@ -157,17 +182,17 @@ function App() {
         setAuthError('All fields are required');
         return;
       }
-      
+
       if (authForm.password !== authForm.confirmPassword) {
         setAuthError('Passwords do not match');
         return;
       }
-      
+
       if (authForm.password.length < 6) {
         setAuthError('Password must be at least 6 characters');
         return;
       }
-      
+
       // Try Firebase first if available
       if (isFirebaseAvailable()) {
         const result = await FirebaseService.signUp(completedEmail, authForm.password, authForm.name);
@@ -176,7 +201,7 @@ function App() {
           setIsAuthenticated(true);
           setUseFirebase(true);
           setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
-          
+
           // Migrate localStorage tasks to Firebase if any exist
           const localTasks = localStorage.getItem(STORAGE_KEY);
           if (localTasks) {
@@ -190,14 +215,14 @@ function App() {
           return;
         }
       }
-      
+
       // Fallback to localStorage (only if Firebase is not available)
       const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
       if (users.find(u => u.email === completedEmail)) {
         setAuthError('Email already exists in local storage. Please use Firebase sign-up or use a different email.');
         return;
       }
-      
+
       const newUser = {
         id: Date.now(),
         name: authForm.name,
@@ -205,7 +230,7 @@ function App() {
         password: authForm.password, // In production, hash this!
         createdAt: Date.now()
       };
-      
+
       users.push(newUser);
       localStorage.setItem(USERS_KEY, JSON.stringify(users));
       localStorage.setItem(AUTH_KEY, JSON.stringify({ email: completedEmail, name: authForm.name }));
@@ -239,16 +264,16 @@ function App() {
           return;
         }
       }
-      
+
       // Fallback to localStorage
       const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
       const user = users.find(u => u.email === completedEmail && u.password === authForm.password);
-      
+
       if (!user) {
         setAuthError('Invalid email or password');
         return;
       }
-      
+
       localStorage.setItem(AUTH_KEY, JSON.stringify({ email: user.email, name: user.name }));
       setIsAuthenticated(true);
       setUseFirebase(false);
@@ -338,7 +363,7 @@ function App() {
       setResetPassword({ newPassword: '', confirmPassword: '' });
       setForgotStep('email');
 
-      setSuccessMessage('Password reset successfully! You can now sign in with your new password.');
+      showToast('Password reset successfully! You can now sign in with your new password.');
     };
 
     const handleGoogleSignIn = async () => {
@@ -379,7 +404,7 @@ function App() {
       setUseFirebase(false);
       setAuthPage('signin');
     };
-  
+
     // ==================== EFFECTS ====================
     useEffect(() => {
       const loadData = async () => {
@@ -469,7 +494,7 @@ function App() {
     // ==================== STORAGE FUNCTIONS ====================
     const saveTasks = async (newTasks) => {
       setTasks(newTasks);
-      
+
       if (useFirebase && currentUser && isFirebaseAvailable()) {
         setSyncing(true);
         await FirebaseService.saveTasks(currentUser.uid, newTasks);
@@ -478,17 +503,17 @@ function App() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newTasks));
       }
     };
-  
+
     const saveTrash = async (newTrash) => {
       setTrash(newTrash);
-      
+
       if (useFirebase && currentUser && isFirebaseAvailable()) {
         await FirebaseService.saveTrash(currentUser.uid, newTrash);
       } else {
       localStorage.setItem(TRASH_KEY, JSON.stringify(newTrash));
       }
     };
-  
+
     // ==================== UI FUNCTIONS ====================
     const closeAll = () => {
       setExpandedTask(null);
@@ -496,7 +521,7 @@ function App() {
       setAddingSubtaskTo(null);
       setShowFilterDropdown(false);
     };
-  
+
     const changeMonth = (delta) => {
       let m = currentMonth + delta, y = currentYear;
       if (m > 11) { m = 0; y++; }
@@ -504,7 +529,7 @@ function App() {
       setCurrentMonth(m);
       setCurrentYear(y);
     };
-  
+
     // ==================== TASK OPERATIONS ====================
     const addTask = () => {
       if (!newTask.title.trim()) return;
@@ -521,7 +546,7 @@ function App() {
       setNewTask({ title: '', priority: 'medium', category: 'Personal', dueDate: '' });
       setShowAdd(false);
     };
-  
+
     const moveToTrash = (id) => {
       const taskToDelete = tasks.find(t => t.id === id);
       if (taskToDelete) {
@@ -531,7 +556,7 @@ function App() {
       if (expandedTask === id) setExpandedTask(null);
       setDeleteConfirm(null);
     };
-  
+
     const restoreFromTrash = (id) => {
       const taskToRestore = trash.find(t => t.id === id);
       if (taskToRestore) {
@@ -540,25 +565,25 @@ function App() {
         saveTrash(trash.filter(t => t.id !== id));
       }
     };
-  
+
     const permanentDelete = (id) => saveTrash(trash.filter(t => t.id !== id));
     const emptyTrash = () => saveTrash([]);
-  
+
     const openEditModal = (task) => {
       setEditForm({ title: task.title, priority: task.priority, category: task.category, dueDate: task.dueDate || '' });
       setEditingTask(task.id);
     };
-  
+
     const saveEdit = () => {
       if (!editForm.title.trim()) return;
       saveTasks(tasks.map(t => t.id === editingTask ? { ...t, ...editForm } : t));
       setEditingTask(null);
     };
-  
+
     const updateProgress = (id, progress) => {
       saveTasks(tasks.map(t => t.id === id ? { ...t, progress: Math.min(100, Math.max(0, progress)) } : t));
     };
-  
+
     // ==================== SUBTASK OPERATIONS ====================
     const addSubtask = (taskId) => {
       if (!newSubtask.trim()) return;
@@ -566,15 +591,15 @@ function App() {
       setNewSubtask('');
       setAddingSubtaskTo(null);
     };
-  
+
     const deleteSubtask = (taskId, subtaskId) => {
       saveTasks(tasks.map(t => t.id === taskId ? { ...t, subtasks: t.subtasks.filter(st => st.id !== subtaskId) } : t));
     };
-  
+
     const updateSubtaskProgress = (taskId, subtaskId, progress) => {
       saveTasks(tasks.map(t => t.id === taskId ? { ...t, subtasks: t.subtasks.map(st => st.id === subtaskId ? { ...st, progress: Math.min(100, Math.max(0, progress)) } : st) } : t));
     };
-  
+
     // ==================== COMPUTED VALUES ====================
     const getMonthsWithTasks = () => {
       const monthsMap = {};
@@ -585,12 +610,12 @@ function App() {
       });
       return Object.values(monthsMap).sort((a, b) => a.year !== b.year ? b.year - a.year : b.month - a.month);
     };
-  
+
     // Search function
     const searchTasks = (query, taskList) => {
       if (!query.trim()) return taskList;
       const lowerQuery = query.toLowerCase();
-      return taskList.filter(t => 
+      return taskList.filter(t =>
         t.title.toLowerCase().includes(lowerQuery) ||
         t.category.toLowerCase().includes(lowerQuery) ||
         t.priority.toLowerCase().includes(lowerQuery) ||
@@ -598,14 +623,13 @@ function App() {
         (t.subtasks && t.subtasks.some(st => st.title.toLowerCase().includes(lowerQuery)))
       );
     };
-  
+
     const monthTasks = tasks.filter(t => t.month === currentMonth && t.year === currentYear);
     const searchedTasks = searchQuery ? searchTasks(searchQuery, tasks) : monthTasks;
     const completedCount = monthTasks.filter(t => getTaskProgress(t) === 100).length;
     const totalCount = monthTasks.length;
     const avgProgress = totalCount > 0 ? Math.round(monthTasks.reduce((s, t) => s + getTaskProgress(t), 0) / totalCount) : 0;
-    const inProgressCount = monthTasks.filter(t => { const p = getTaskProgress(t); return p > 0 && p < 100; }).length;
-  
+
     const filteredTasks = (searchQuery ? searchedTasks : monthTasks).filter(t => {
       const p = getTaskProgress(t);
       if (filter === 'pending') return p < 100;
@@ -614,12 +638,12 @@ function App() {
       if (filter === 'overdue') return t.dueDate && isOverdue(t.dueDate) && p < 100;
       return true;
     });
-  
+
     const sortedTasks = filteredTasks.sort((a, b) => {
       // Sort by completion status first
       const pa = getTaskProgress(a), pb = getTaskProgress(b);
       if ((pa === 100) !== (pb === 100)) return pa === 100 ? 1 : -1;
-      
+
       // Then sort by selected criteria
       if (sortBy === 'dueDate') {
         if (!a.dueDate && !b.dueDate) {
@@ -629,56 +653,52 @@ function App() {
         if (!b.dueDate) return -1;
         return new Date(a.dueDate) - new Date(b.dueDate);
       }
-      
+
       if (sortBy === 'progress') {
         return pb - pa;
       }
-      
+
       // Default: sort by priority
       return { high: 0, medium: 1, low: 2 }[a.priority] - { high: 0, medium: 1, low: 2 }[b.priority];
     });
-  
+
     const isCurrentMonth = currentMonth === today.getMonth() && currentYear === today.getFullYear();
     const monthsWithTasks = getMonthsWithTasks();
-    const allTasksProgress = tasks.length > 0 ? Math.round(tasks.reduce((s, t) => s + getTaskProgress(t), 0) / tasks.length) : 0;
     const taskToDelete = tasks.find(t => t.id === deleteConfirm);
-  
+
     // ==================== LOADING ====================
     if (loading) {
-      return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400">Loading...</div>;
+      return <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-base)', color: 'var(--text-secondary)' }}>Loading...</div>;
     }
 
     // ==================== AUTHENTICATION PAGES ====================
     if (!isAuthenticated) {
-      const currentUser = JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
-      
       return (
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--bg-base)' }}>
+          <Toast message={toast.message} type={toast.type} visible={toast.visible} onDismiss={dismissToast} />
           <div className="w-full max-w-md">
             {/* Header */}
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-white mb-2">Progressly</h1>
-              <p className="text-slate-400">Keep moving forward!</p>
+              <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Progressly</h1>
+              <p style={{ color: 'var(--text-secondary)' }}>Keep moving forward!</p>
             </div>
 
             {/* Auth Form Card */}
-            <div className="bg-slate-800 rounded-2xl p-6 shadow-xl">
+            <div className="rounded-2xl p-6 shadow-xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
               {/* Tabs - Hide on forgot password page */}
               {authPage !== 'forgot' && (
                 <div className="flex gap-2 mb-6">
                   <button
-                    onClick={() => { setAuthPage('signin'); setAuthError(''); setSuccessMessage(''); }}
-                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
-                      authPage === 'signin' ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                    }`}
+                    onClick={() => { setAuthPage('signin'); setAuthError(''); }}
+                    className="pressable flex-1 py-2 rounded-xl text-sm font-medium transition-all"
+                    style={authPage === 'signin' ? { background: 'var(--accent)', color: 'white' } : { background: 'var(--divider)', color: 'var(--text-secondary)' }}
                   >
                     Sign In
                   </button>
                   <button
-                    onClick={() => { setAuthPage('signup'); setAuthError(''); setSuccessMessage(''); }}
-                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
-                      authPage === 'signup' ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                    }`}
+                    onClick={() => { setAuthPage('signup'); setAuthError(''); }}
+                    className="pressable flex-1 py-2 rounded-xl text-sm font-medium transition-all"
+                    style={authPage === 'signup' ? { background: 'var(--accent)', color: 'white' } : { background: 'var(--divider)', color: 'var(--text-secondary)' }}
                   >
                     Sign Up
                   </button>
@@ -688,22 +708,15 @@ function App() {
               {/* Forgot Password Header */}
               {authPage === 'forgot' && (
                 <div className="mb-6">
-                  <h2 className="text-xl font-bold text-white mb-2">Reset Password</h2>
-                  <p className="text-sm text-slate-400">Enter your email to reset your password</p>
+                  <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Reset Password</h2>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Enter your email to reset your password</p>
                 </div>
               )}
 
               {/* Error Message */}
               {authError && (
-                <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-400 text-sm">
+                <div className="mb-4 p-3 rounded-xl text-sm" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--priority-high)' }}>
                   {authError}
-                </div>
-              )}
-
-              {successMessage && (
-                <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-xl text-green-400 text-sm flex items-center gap-2">
-                  <Icon name="CircleCheck" size={16} color="#4ade80" />
-                  {successMessage}
                 </div>
               )}
 
@@ -711,18 +724,19 @@ function App() {
               {authPage === 'signup' && (
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">Name</label>
+                    <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>Name</label>
                     <input
                       type="text"
                       value={authForm.name}
                       onChange={(e) => setAuthForm({...authForm, name: e.target.value})}
-                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                      className="w-full rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-violet-500"
+                      style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
                       placeholder="Enter your name"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">Email</label>
+                    <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>Email</label>
                     <div className="relative">
                       <input
                         type="text"
@@ -730,25 +744,27 @@ function App() {
                         value={authForm.email}
                         onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
                         onBlur={() => setAuthForm({...authForm, email: completeEmail(authForm.email)})}
-                        className="w-full bg-slate-700 rounded-xl px-4 py-3 pr-28 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full rounded-xl px-4 py-3 pr-28 outline-none focus:ring-2 focus:ring-violet-500"
+                        style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
                         placeholder="Enter your email or username"
                         required
                       />
                       {!authForm.email.includes('@') && (
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm pointer-events-none">
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: 'var(--text-muted)' }}>
                           @gmail.com
                         </span>
                       )}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">Password</label>
+                    <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>Password</label>
                     <div className="relative">
                       <input
                         type={showPassword.password ? 'text' : 'password'}
                         value={authForm.password}
                         onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
-                        className="w-full bg-slate-700 rounded-xl px-4 py-3 pr-12 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full rounded-xl px-4 py-3 pr-12 outline-none focus:ring-2 focus:ring-violet-500"
+                        style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
                         placeholder="Create a password"
                         required
                         minLength={6}
@@ -756,27 +772,30 @@ function App() {
                       <button
                         type="button"
                         onClick={() => setShowPassword({...showPassword, password: !showPassword.password})}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                        style={{ color: 'var(--text-muted)' }}
                       >
                         <Icon name={showPassword.password ? 'Eye' : 'EyeOff'} size={20} />
                       </button>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">Confirm Password</label>
+                    <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>Confirm Password</label>
                     <div className="relative">
                       <input
                         type={showPassword.confirmPassword ? 'text' : 'password'}
                         value={authForm.confirmPassword}
                         onChange={(e) => setAuthForm({...authForm, confirmPassword: e.target.value})}
-                        className="w-full bg-slate-700 rounded-xl px-4 py-3 pr-12 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full rounded-xl px-4 py-3 pr-12 outline-none focus:ring-2 focus:ring-violet-500"
+                        style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
                         placeholder="Confirm your password"
                         required
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword({...showPassword, confirmPassword: !showPassword.confirmPassword})}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                        style={{ color: 'var(--text-muted)' }}
                       >
                         <Icon name={showPassword.confirmPassword ? 'Eye' : 'EyeOff'} size={20} />
                       </button>
@@ -784,19 +803,21 @@ function App() {
                   </div>
                   <button
                     type="submit"
-                    className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
+                    className="pressable w-full text-white font-bold py-3 rounded-xl transition-all"
+                    style={{ background: 'var(--accent)' }}
                   >
                     Sign Up
                   </button>
                   <div className="flex items-center gap-3 my-1">
-                    <div className="flex-1 h-px bg-slate-600"></div>
-                    <span className="text-slate-500 text-xs">or</span>
-                    <div className="flex-1 h-px bg-slate-600"></div>
+                    <div className="flex-1 h-px" style={{ background: 'var(--divider)' }}></div>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>or</span>
+                    <div className="flex-1 h-px" style={{ background: 'var(--divider)' }}></div>
                   </div>
                   <button
                     type="button"
                     onClick={handleGoogleSignIn}
-                    className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-3 border border-slate-600"
+                    className="pressable w-full font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-3"
+                    style={{ background: 'var(--divider)', border: '1px solid var(--border-card)', color: 'var(--text-primary)' }}
                   >
                     <svg width="18" height="18" viewBox="0 0 48 48">
                       <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -813,7 +834,7 @@ function App() {
               {authPage === 'signin' && (
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">Email</label>
+                    <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>Email</label>
                     <div className="relative">
                       <input
                         type="text"
@@ -821,32 +842,35 @@ function App() {
                         value={authForm.email}
                         onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
                         onBlur={() => setAuthForm({...authForm, email: completeEmail(authForm.email)})}
-                        className="w-full bg-slate-700 rounded-xl px-4 py-3 pr-28 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full rounded-xl px-4 py-3 pr-28 outline-none focus:ring-2 focus:ring-violet-500"
+                        style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
                         placeholder="Enter your email or username"
                         required
                       />
                       {!authForm.email.includes('@') && (
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm pointer-events-none">
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: 'var(--text-muted)' }}>
                           @gmail.com
                         </span>
                       )}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">Password</label>
+                    <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>Password</label>
                     <div className="relative">
                       <input
                         type={showPassword.password ? 'text' : 'password'}
                         value={authForm.password}
                         onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
-                        className="w-full bg-slate-700 rounded-xl px-4 py-3 pr-12 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full rounded-xl px-4 py-3 pr-12 outline-none focus:ring-2 focus:ring-violet-500"
+                        style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
                         placeholder="Enter your password"
                         required
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword({...showPassword, password: !showPassword.password})}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                        style={{ color: 'var(--text-muted)' }}
                       >
                         <Icon name={showPassword.password ? 'Eye' : 'EyeOff'} size={20} />
                       </button>
@@ -863,26 +887,29 @@ function App() {
                         setResetPassword({ newPassword: '', confirmPassword: '' });
                         setResetEmailSent(false);
                       }}
-                      className="text-sm text-violet-400 hover:text-violet-300"
+                      className="pressable text-sm"
+                      style={{ color: 'var(--accent)' }}
                     >
                       Forgot Password?
                     </button>
                   </div>
                   <button
                     type="submit"
-                    className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
+                    className="pressable w-full text-white font-bold py-3 rounded-xl transition-all"
+                    style={{ background: 'var(--accent)' }}
                   >
                     Sign In
                   </button>
                   <div className="flex items-center gap-3 my-1">
-                    <div className="flex-1 h-px bg-slate-600"></div>
-                    <span className="text-slate-500 text-xs">or</span>
-                    <div className="flex-1 h-px bg-slate-600"></div>
+                    <div className="flex-1 h-px" style={{ background: 'var(--divider)' }}></div>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>or</span>
+                    <div className="flex-1 h-px" style={{ background: 'var(--divider)' }}></div>
                   </div>
                   <button
                     type="button"
                     onClick={handleGoogleSignIn}
-                    className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-3 border border-slate-600"
+                    className="pressable w-full font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-3"
+                    style={{ background: 'var(--divider)', border: '1px solid var(--border-card)', color: 'var(--text-primary)' }}
                   >
                     <svg width="18" height="18" viewBox="0 0 48 48">
                       <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -900,24 +927,26 @@ function App() {
                 <>
                   {resetEmailSent ? (
                     <div className="space-y-4 text-center">
-                      <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Icon name="MailCheck" size={32} className="text-green-400" color="#4ade80" />
+                      <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: 'rgba(34, 197, 94, 0.15)' }}>
+                        <Icon name="MailCheck" size={32} color="var(--priority-low)" />
                       </div>
-                      <h3 className="text-lg font-semibold text-white">Check your inbox</h3>
-                      <p className="text-sm text-slate-400">
-                        We've sent a password reset link to <span className="text-violet-400 font-medium">{forgotEmail}</span>. Follow the instructions in the email to reset your password.
+                      <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Check your inbox</h3>
+                      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        We've sent a password reset link to <span className="font-medium" style={{ color: 'var(--accent)' }}>{forgotEmail}</span>. Follow the instructions in the email to reset your password.
                       </p>
                       <button
                         type="button"
                         onClick={() => { setAuthPage('signin'); setAuthError(''); setForgotEmail(''); setResetEmailSent(false); }}
-                        className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
+                        className="pressable w-full text-white font-bold py-3 rounded-xl transition-all"
+                        style={{ background: 'var(--accent)' }}
                       >
                         Back to Sign In
                       </button>
                       <button
                         type="button"
                         onClick={() => { setResetEmailSent(false); }}
-                        className="w-full text-slate-400 hover:text-slate-300 text-sm"
+                        className="pressable w-full text-sm"
+                        style={{ color: 'var(--text-secondary)' }}
                       >
                         Didn't receive it? Try again
                       </button>
@@ -925,12 +954,12 @@ function App() {
                   ) : forgotStep === 'email' ? (
                     <form onSubmit={handleForgotPassword} className="space-y-4">
                       <div className="mb-4">
-                        <p className="text-sm text-slate-400">
+                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                           Enter your email address and we'll help you reset your password.
                         </p>
                       </div>
                       <div>
-                        <label className="block text-sm text-slate-400 mb-2">Email</label>
+                        <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>Email</label>
                         <div className="relative">
                           <input
                             type="text"
@@ -938,13 +967,14 @@ function App() {
                             value={forgotEmail}
                             onChange={(e) => setForgotEmail(e.target.value)}
                             onBlur={() => setForgotEmail(completeEmail(forgotEmail))}
-                            className="w-full bg-slate-700 rounded-xl px-4 py-3 pr-28 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                            className="w-full rounded-xl px-4 py-3 pr-28 outline-none focus:ring-2 focus:ring-violet-500"
+                            style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
                             placeholder="Enter your email or username"
                             required
                             autoFocus
                           />
                           {!forgotEmail.includes('@') && (
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm pointer-events-none">
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: 'var(--text-muted)' }}>
                               @gmail.com
                             </span>
                           )}
@@ -952,14 +982,16 @@ function App() {
                       </div>
                       <button
                         type="submit"
-                        className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
+                        className="pressable w-full text-white font-bold py-3 rounded-xl transition-all"
+                        style={{ background: 'var(--accent)' }}
                       >
                         Continue
                       </button>
                       <button
                         type="button"
                         onClick={() => { setAuthPage('signin'); setAuthError(''); setForgotEmail(''); setResetEmailSent(false); }}
-                        className="w-full text-slate-400 hover:text-slate-300 text-sm"
+                        className="pressable w-full text-sm"
+                        style={{ color: 'var(--text-secondary)' }}
                       >
                         Back to Sign In
                       </button>
@@ -967,18 +999,19 @@ function App() {
                   ) : (
                     <form onSubmit={handleResetPassword} className="space-y-4">
                       <div className="mb-4">
-                        <p className="text-sm text-slate-400">
-                          Reset password for: <span className="text-violet-400 font-medium">{forgotEmail}</span>
+                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                          Reset password for: <span className="font-medium" style={{ color: 'var(--accent)' }}>{forgotEmail}</span>
                         </p>
                       </div>
                       <div>
-                        <label className="block text-sm text-slate-400 mb-2">New Password</label>
+                        <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>New Password</label>
                         <div className="relative">
                           <input
                             type={showPassword.newPassword ? 'text' : 'password'}
                             value={resetPassword.newPassword}
                             onChange={(e) => setResetPassword({...resetPassword, newPassword: e.target.value})}
-                            className="w-full bg-slate-700 rounded-xl px-4 py-3 pr-12 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                            className="w-full rounded-xl px-4 py-3 pr-12 outline-none focus:ring-2 focus:ring-violet-500"
+                            style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
                             placeholder="Enter new password"
                             required
                             minLength={6}
@@ -987,20 +1020,22 @@ function App() {
                           <button
                             type="button"
                             onClick={() => setShowPassword({...showPassword, newPassword: !showPassword.newPassword})}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                            className="absolute right-3 top-1/2 -translate-y-1/2"
+                            style={{ color: 'var(--text-muted)' }}
                           >
                             <Icon name={showPassword.newPassword ? 'Eye' : 'EyeOff'} size={20} />
                           </button>
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm text-slate-400 mb-2">Confirm New Password</label>
+                        <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>Confirm New Password</label>
                         <div className="relative">
                           <input
                             type={showPassword.confirmNewPassword ? 'text' : 'password'}
                             value={resetPassword.confirmPassword}
                             onChange={(e) => setResetPassword({...resetPassword, confirmPassword: e.target.value})}
-                            className="w-full bg-slate-700 rounded-xl px-4 py-3 pr-12 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                            className="w-full rounded-xl px-4 py-3 pr-12 outline-none focus:ring-2 focus:ring-violet-500"
+                            style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
                             placeholder="Confirm new password"
                             required
                             minLength={6}
@@ -1008,7 +1043,8 @@ function App() {
                           <button
                             type="button"
                             onClick={() => setShowPassword({...showPassword, confirmNewPassword: !showPassword.confirmNewPassword})}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                            className="absolute right-3 top-1/2 -translate-y-1/2"
+                            style={{ color: 'var(--text-muted)' }}
                           >
                             <Icon name={showPassword.confirmNewPassword ? 'Eye' : 'EyeOff'} size={20} />
                           </button>
@@ -1016,14 +1052,16 @@ function App() {
                       </div>
                       <button
                         type="submit"
-                        className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
+                        className="pressable w-full text-white font-bold py-3 rounded-xl transition-all"
+                        style={{ background: 'var(--accent)' }}
                       >
                         Reset Password
                       </button>
                       <button
                         type="button"
                         onClick={() => { setForgotStep('email'); setResetPassword({ newPassword: '', confirmPassword: '' }); }}
-                        className="w-full text-slate-400 hover:text-slate-300 text-sm"
+                        className="pressable w-full text-sm"
+                        style={{ color: 'var(--text-secondary)' }}
                       >
                         Back
                       </button>
@@ -1034,18 +1072,18 @@ function App() {
 
               {/* Footer Links */}
               {authPage !== 'forgot' && (
-                <div className="mt-6 text-center text-sm text-slate-400">
+                <div className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
                   {authPage === 'signup' ? (
                     <p>
                       Already have an account?{' '}
-                      <button onClick={() => { setAuthPage('signin'); setAuthError(''); setSuccessMessage(''); }} className="text-violet-400 hover:text-violet-300">
+                      <button onClick={() => { setAuthPage('signin'); setAuthError(''); }} className="pressable" style={{ color: 'var(--accent)' }}>
                         Sign In
                       </button>
                     </p>
                   ) : (
                     <p>
                       Don't have an account?{' '}
-                      <button onClick={() => { setAuthPage('signup'); setAuthError(''); setSuccessMessage(''); }} className="text-violet-400 hover:text-violet-300">
+                      <button onClick={() => { setAuthPage('signup'); setAuthError(''); }} className="pressable" style={{ color: 'var(--accent)' }}>
                         Sign Up
                       </button>
                     </p>
@@ -1057,448 +1095,282 @@ function App() {
         </div>
       );
     }
-  
+
     // ==================== TRASH PAGE ====================
     if (currentPage === 'trash') {
       return (
-        <div className="min-h-screen bg-slate-900 text-white pb-24">
-          <div className="bg-gradient-to-r from-red-600 to-rose-600 px-4 pt-8 pb-6">
+        <div className="min-h-screen pb-24" style={{ background: 'var(--bg-base)' }}>
+          <Toast message={toast.message} type={toast.type} visible={toast.visible} onDismiss={dismissToast} />
+
+          <div className="px-4 pt-6 pb-4">
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <Icon name="Trash2" size={24}/>
-                  <h1 className="text-2xl font-bold">Trash</h1>
+                  <Icon name="Trash2" size={24} color="var(--priority-high)" />
+                  <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Trash</h1>
                 </div>
-                <p className="text-red-200 text-sm">{trash.length} deleted task{trash.length !== 1 ? 's' : ''}</p>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{trash.length} deleted task{trash.length !== 1 ? 's' : ''}</p>
               </div>
               {trash.length > 0 && (
-                <button onClick={emptyTrash} className="bg-white/20 px-4 py-2 rounded-xl text-sm font-medium hover:bg-white/30">Empty All</button>
+                <button onClick={emptyTrash}
+                  className="pressable px-4 py-2 rounded-xl text-sm font-medium"
+                  style={{ background: 'var(--divider)', color: 'var(--text-primary)' }}>
+                  Empty All
+                </button>
               )}
             </div>
           </div>
-  
-          <div className="px-4 mt-4">
+
+          <div className="px-4">
             {trash.length === 0 ? (
-              <div className="text-center py-16 text-slate-500">
-                <Icon name="Trash2" size={64} className="mx-auto opacity-30"/>
-                <p className="mt-4 text-lg">Trash is empty</p>
-                <p className="text-sm mt-1">Deleted tasks will appear here</p>
+              <div className="text-center py-16">
+                <Icon name="Trash2" size={64} className="mx-auto opacity-20" color="var(--text-muted)" />
+                <p className="mt-4 text-lg" style={{ color: 'var(--text-muted)' }}>Trash is empty</p>
+                <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Deleted tasks will appear here</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {trash.map(task => (
-                  <TrashItem 
-                    key={task.id} 
-                    task={task} 
-                    onRestore={() => restoreFromTrash(task.id)} 
-                    onDelete={() => permanentDelete(task.id)}
-                  />
+                  <TrashItem key={task.id} task={task} onRestore={() => restoreFromTrash(task.id)} onDelete={() => permanentDelete(task.id)} />
                 ))}
               </div>
             )}
           </div>
-  
+
           <BottomNav currentPage={currentPage} setCurrentPage={setCurrentPage} trashCount={trash.length} />
         </div>
       );
     }
-  
-    // ==================== STATISTICS PAGE ====================
-    if (currentPage === 'statistics') {
-      const categoryStats = getCategoryStats(tasks);
-      const priorityStats = getPriorityStats(tasks);
-      const weeklyStats = getWeeklyStats(tasks);
-      const monthlyTrends = getMonthlyTrends(tasks);
-      const completionStreak = getCompletionStreak(tasks);
-      const dailyCompletion = getDailyCompletion(tasks);
-      const maxDailyCount = Math.max(...dailyCompletion.map(d => d.count), 1);
-      
-      return (
-        <div className="min-h-screen bg-slate-900 text-white pb-24">
-          <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 pt-8 pb-6">
-            <div className="flex items-center gap-2 mb-1">
-              <Icon name="BarChart3" size={24} />
-              <h1 className="text-2xl font-bold">Statistics</h1>
-            </div>
-            <p className="text-violet-200 text-sm">Track your productivity trends</p>
-          </div>
 
-          <div className="px-4 mt-4 space-y-4">
-            {/* Overall Stats */}
-            <div className="bg-slate-800 rounded-2xl p-5">
-              <h2 className="text-lg font-semibold mb-4">Overall Performance</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-violet-400">{tasks.length}</div>
-                  <div className="text-xs text-slate-400 mt-1">Total Tasks</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-green-400">{completionStreak}</div>
-                  <div className="text-xs text-slate-400 mt-1">Day Streak</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-400">{tasks.filter(t => getTaskProgress(t) === 100).length}</div>
-                  <div className="text-xs text-slate-400 mt-1">Completed</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-yellow-400">{allTasksProgress}%</div>
-                  <div className="text-xs text-slate-400 mt-1">Avg Progress</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Daily Completion Chart */}
-            <div className="bg-slate-800 rounded-2xl p-5">
-              <h2 className="text-lg font-semibold mb-4">Last 7 Days</h2>
-              <div className="flex items-end justify-between gap-2 h-32">
-                {dailyCompletion.map((day, i) => (
-                  <div key={i} className="flex-1 flex flex-col items-center">
-                    <div className="w-full flex flex-col items-center justify-end" style={{ height: '100px' }}>
-                      <div 
-                        className="w-full bg-violet-600 rounded-t transition-all"
-                        style={{ height: `${(day.count / maxDailyCount) * 100}%`, minHeight: day.count > 0 ? '4px' : '0' }}
-                      />
-                    </div>
-                    <div className="text-xs text-slate-400 mt-2">{day.day}</div>
-                    <div className="text-xs font-bold mt-1">{day.count}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Category Breakdown */}
-            <div className="bg-slate-800 rounded-2xl p-5">
-              <h2 className="text-lg font-semibold mb-4">By Category</h2>
-              <div className="space-y-3">
-                {Object.entries(categoryStats).map(([cat, stats]) => (
-                  <div key={cat}>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium">{cat}</span>
-                      <span className="text-xs text-slate-400">{stats.completed}/{stats.total} • {stats.avgProgress}%</span>
-                    </div>
-                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full rounded-full transition-all"
-                        style={{ width: `${stats.avgProgress}%`, backgroundColor: getProgressColor(stats.avgProgress) }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Priority Distribution */}
-            <div className="bg-slate-800 rounded-2xl p-5">
-              <h2 className="text-lg font-semibold mb-4">Priority Distribution</h2>
-              <div className="space-y-3">
-                {Object.entries(priorityStats).map(([priority, count]) => {
-                  const total = Object.values(priorityStats).reduce((a, b) => a + b, 0);
-                  const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-                  return (
-                    <div key={priority}>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium capitalize" style={{ color: PRIORITIES[priority] }}>{priority}</span>
-                        <span className="text-xs text-slate-400">{count} tasks • {percentage}%</span>
-                      </div>
-                      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${percentage}%`, backgroundColor: PRIORITIES[priority] }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Monthly Trends */}
-            <div className="bg-slate-800 rounded-2xl p-5">
-              <h2 className="text-lg font-semibold mb-4">Monthly Trends (Last 6 Months)</h2>
-              <div className="space-y-3">
-                {monthlyTrends.map((trend, i) => (
-                  <div key={i}>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium">{trend.month} {trend.year}</span>
-                      <span className="text-xs text-slate-400">{trend.completed}/{trend.total} • {trend.completionRate}%</span>
-                    </div>
-                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full rounded-full transition-all"
-                        style={{ width: `${trend.completionRate}%`, backgroundColor: getProgressColor(trend.completionRate) }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-  
-          <BottomNav currentPage={currentPage} setCurrentPage={setCurrentPage} trashCount={trash.length} />
-        </div>
-      );
-    }
-  
     // ==================== HISTORY PAGE ====================
     if (currentPage === 'history') {
       return (
-        <div className="min-h-screen bg-slate-900 text-white pb-24">
-          <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 pt-8 pb-6">
+        <div className="min-h-screen pb-24" style={{ background: 'var(--bg-base)' }}>
+          <Toast message={toast.message} type={toast.type} visible={toast.visible} onDismiss={dismissToast} />
+
+          <div className="px-4 pt-6 pb-4">
             <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-2xl font-bold">Progressly</h1>
+              <Icon name="History" size={24} color="var(--accent)" />
+              <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>History</h1>
             </div>
-            <p className="text-violet-200 text-sm">View progress across all months</p>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>All your tasks across months</p>
           </div>
-  
-          <div className="mx-4 mt-4 bg-slate-800 rounded-2xl p-5">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-xl flex items-center justify-center relative">
-                <svg className="w-16 h-16 -rotate-90">
-                  <circle cx="32" cy="32" r="28" stroke="#334155" strokeWidth="6" fill="none"/>
-                  <circle cx="32" cy="32" r="28" stroke="url(#gradAll)" strokeWidth="6" fill="none" strokeDasharray={`${allTasksProgress * 1.76} 176`} strokeLinecap="round"/>
-                  <defs><linearGradient id="gradAll" x1="0%" y1="0%" x2="100%"><stop offset="0%" stopColor="#8b5cf6"/><stop offset="100%" stopColor="#6366f1"/></linearGradient></defs>
-                </svg>
-                <span className="absolute text-sm font-bold">{allTasksProgress}%</span>
-              </div>
-              <div>
-                <div className="text-lg font-semibold">All Time Progress</div>
-                <div className="text-slate-400 text-sm">{tasks.length} total tasks • {monthsWithTasks.length} months</div>
-              </div>
-            </div>
-          </div>
-  
-          <div className="px-4 mt-6">
-            <div className="text-sm text-slate-400 mb-3">All Months</div>
-            {monthsWithTasks.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3">
-                {monthsWithTasks.map(({ month, year, tasks: mTasks }) => {
-                  const stats = getMonthStats(mTasks);
-                  const isCurrent = month === today.getMonth() && year === today.getFullYear();
-                  return (
-                    <div
-                      key={`${year}-${month}`}
-                      onClick={() => { setCurrentMonth(month); setCurrentYear(year); setCurrentPage('home'); }}
-                      className={`p-4 rounded-xl cursor-pointer transition-all ${isCurrent ? 'bg-violet-600 ring-2 ring-violet-400' : 'bg-slate-800 hover:bg-slate-700'}`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <div className="text-xs text-slate-400">{year}</div>
-                          <div className="text-lg font-bold">{MONTHS_FULL[month]}</div>
-                        </div>
-                        {isCurrent && <span className="text-xs bg-white/20 px-2 py-1 rounded">Current</span>}
-                      </div>
-                      <div className="mt-3 h-2 bg-slate-600 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${stats.avgProgress}%`, backgroundColor: getProgressColor(stats.avgProgress) }}/>
-                      </div>
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="text-lg font-bold" style={{ color: getProgressColor(stats.avgProgress) }}>{stats.avgProgress}%</span>
-                        <span className="text-sm text-slate-400">{stats.completed}/{stats.total} done</span>
-                      </div>
-                    </div>
-                  );
-                })}
+
+          <div className="px-4 space-y-6">
+            {monthsWithTasks.length === 0 ? (
+              <div className="text-center py-16">
+                <Icon name="History" size={64} className="mx-auto opacity-20" color="var(--text-muted)" />
+                <p className="mt-4 text-lg" style={{ color: 'var(--text-muted)' }}>No history yet</p>
               </div>
             ) : (
-              <div className="text-center py-12 text-slate-500">
-                <Icon name="Calendar" size={48} className="mx-auto opacity-50"/>
-                <p className="mt-3">No tasks yet</p>
-              </div>
+              monthsWithTasks.map((monthData, gi) => {
+                const stats = getMonthStats(monthData.tasks);
+                return (
+                  <div key={`${monthData.year}-${monthData.month}`} className="stagger-item" style={{ animationDelay: `${gi * 80}ms` }}>
+                    <div className="flex items-center gap-3 mb-3">
+                      <ProgressCircle progress={stats.avgProgress} size={24} strokeWidth={3} />
+                      <h3 className="font-bold" style={{ color: 'var(--text-primary)' }}>
+                        {MONTHS_FULL[monthData.month]} {monthData.year}
+                      </h3>
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {stats.completed}/{stats.total} done
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {monthData.tasks.map((task, ti) => (
+                        <div key={task.id} className="stagger-item" style={{ animationDelay: `${gi * 80 + ti * 40}ms` }}>
+                          <TaskItem
+                            task={task}
+                            isExpanded={expandedTask === task.id}
+                            expandedSubtask={expandedSubtask}
+                            addingSubtaskTo={addingSubtaskTo}
+                            newSubtask={newSubtask}
+                            setNewSubtask={setNewSubtask}
+                            onToggleExpand={() => { setExpandedTask(expandedTask === task.id ? null : task.id); setExpandedSubtask(null); }}
+                            onToggleSubtask={(stId) => setExpandedSubtask(expandedSubtask === stId ? null : stId)}
+                            onEdit={() => openEditModal(task)}
+                            onDelete={() => setDeleteConfirm(task.id)}
+                            onUpdateProgress={(p) => updateProgress(task.id, p)}
+                            onAddSubtask={() => addSubtask(task.id)}
+                            onDeleteSubtask={(stId) => deleteSubtask(task.id, stId)}
+                            onUpdateSubtaskProgress={(stId, p) => updateSubtaskProgress(task.id, stId, p)}
+                            onToggleAddSubtask={() => setAddingSubtaskTo(addingSubtaskTo === task.id ? null : task.id)}
+                            searchQuery=""
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
-  
+
+          {/* Modals for history page editing */}
+          {editingTask && <EditTaskModal editForm={editForm} setEditForm={setEditForm} onSave={saveEdit} onCancel={() => setEditingTask(null)} />}
+          {deleteConfirm && <DeleteConfirmModal task={taskToDelete} onCancel={() => setDeleteConfirm(null)} onConfirm={() => moveToTrash(deleteConfirm)} />}
+
           <BottomNav currentPage={currentPage} setCurrentPage={setCurrentPage} trashCount={trash.length} />
         </div>
       );
     }
-  
+
     // ==================== HOME PAGE ====================
     return (
-      <div className="min-h-screen bg-slate-900 text-white pb-24" onClick={closeAll}>
-        {/* Modals */}
-        {deleteConfirm && <DeleteConfirmModal task={taskToDelete} onCancel={() => setDeleteConfirm(null)} onConfirm={() => moveToTrash(deleteConfirm)} />}
-        {editingTask && <EditTaskModal editForm={editForm} setEditForm={setEditForm} onSave={saveEdit} onCancel={() => setEditingTask(null)} />}
-        {showAdd && <AddTaskModal newTask={newTask} setNewTask={setNewTask} onAdd={addTask} onCancel={() => setShowAdd(false)} />}
-        
+      <div className="min-h-screen pb-24" style={{ background: 'var(--bg-base)' }}>
+        {/* Toast */}
+        <Toast message={toast.message} type={toast.type} visible={toast.visible} onDismiss={dismissToast} />
+
         {/* Header */}
-        <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 pt-8 pb-6">
+        <div className="px-4 pt-6 pb-4">
           <div className="flex items-center justify-between mb-1">
-            <div>
-            <h1 className="text-2xl font-bold">Progressly</h1>
-              <p className="text-violet-200 text-sm">Keep moving forward !</p>
+            <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              {getGreeting(currentUser?.name || 'User')}
+            </h1>
+            <div className="flex items-center gap-1">
+              <ThemeToggle preference={themePreference} onToggle={handleThemeToggle} />
+              {syncing && <Icon name="RefreshCw" size={16} color="var(--accent)" className="animate-spin" />}
+              <button onClick={handleLogout} className="pressable p-2 rounded-xl" style={{ color: 'var(--text-muted)' }}>
+                <Icon name="LogOut" size={20} />
+              </button>
             </div>
+          </div>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{getFormattedDate()}</p>
+        </div>
+
+        {/* Month Navigation */}
+        <div className="flex items-center justify-center gap-4 px-4 mb-4">
+          <button onClick={() => changeMonth(-1)} className="pressable-sm p-2" style={{ color: 'var(--text-secondary)' }}>
+            <Icon name="ChevronLeft" size={20} />
+          </button>
+          <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+            {MONTHS_FULL[currentMonth]} {currentYear}
+          </h2>
+          <button onClick={() => changeMonth(1)} className="pressable-sm p-2" style={{ color: 'var(--text-secondary)' }}>
+            <Icon name="ChevronRight" size={20} />
+          </button>
+        </div>
+
+        {/* Progress Ring */}
+        <div className="flex justify-center mb-4">
+          <div className="relative">
+            <ProgressCircle progress={avgProgress} size={80} strokeWidth={6} animate={true} />
+            <span className="absolute inset-0 flex items-center justify-center text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+              {avgProgress}%
+            </span>
+          </div>
+        </div>
+
+        {/* Stats Summary */}
+        <div className="px-4 mb-6">
+          <StatsSummary
+            totalCount={totalCount}
+            completedCount={completedCount}
+            streak={getCompletionStreak(tasks)}
+            allTasks={monthTasks}
+            expanded={showStats}
+            onToggle={() => setShowStats(!showStats)}
+          />
+        </div>
+
+        {/* Filter Bar */}
+        <div className="px-4 mb-4">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 flex gap-2 overflow-x-auto no-scrollbar">
+              {[
+                { id: 'all', label: 'All' },
+                { id: 'pending', label: 'To Do' },
+                { id: 'inprogress', label: 'In Progress' },
+                { id: 'completed', label: 'Done' },
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setFilter(f.id)}
+                  className="pressable px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap"
+                  style={{
+                    background: filter === f.id ? 'var(--accent)' : 'var(--bg-card)',
+                    color: filter === f.id ? 'white' : 'var(--text-secondary)',
+                    border: filter === f.id ? 'none' : '1px solid var(--border-card)',
+                  }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            {/* Search toggle */}
             <button
-              onClick={handleLogout}
-              className="p-2 hover:bg-white/20 rounded-full transition-all"
-              title="Logout"
+              onClick={() => setSearchQuery(searchQuery ? '' : ' ')}
+              className="pressable p-2 rounded-xl"
+              style={{ color: searchQuery ? 'var(--accent)' : 'var(--text-muted)' }}
             >
-              <Icon name="LogOut" size={24} color="white"/>
+              <Icon name="Search" size={18} />
+            </button>
+            {/* Sort */}
+            <button
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              className="pressable p-2 rounded-xl"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <Icon name="ArrowUpDown" size={18} />
             </button>
           </div>
-        </div>
-  
-        {/* Month Navigator */}
-        <div className="bg-slate-800 px-4 py-4 flex items-center justify-between">
-          <button onClick={(e) => { e.stopPropagation(); changeMonth(-1); }} className="p-2 hover:bg-slate-700 rounded-full">
-            <Icon name="ChevronLeft" size={24}/>
-          </button>
-          <div className="text-center">
-            <div className="text-xl font-bold">{MONTHS_FULL[currentMonth]}</div>
-            <div className="text-slate-400 text-sm">{currentYear} {isCurrentMonth && <span className="text-violet-400">• Current</span>}</div>
-          </div>
-          <button onClick={(e) => { e.stopPropagation(); changeMonth(1); }} className="p-2 hover:bg-slate-700 rounded-full">
-            <Icon name="ChevronRight" size={24}/>
-          </button>
-        </div>
-  
-        {/* Stats Card */}
-        <div className="mx-4 mt-4 bg-slate-800 rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center relative">
-              <svg className="w-14 h-14 -rotate-90">
-                <circle cx="28" cy="28" r="24" stroke="#334155" strokeWidth="6" fill="none"/>
-                <circle cx="28" cy="28" r="24" stroke="url(#grad)" strokeWidth="6" fill="none" strokeDasharray={`${avgProgress*1.51} 151`} strokeLinecap="round"/>
-                <defs><linearGradient id="grad" x1="0%" y1="0%" x2="100%"><stop offset="0%" stopColor="#8b5cf6"/><stop offset="100%" stopColor="#6366f1"/></linearGradient></defs>
-              </svg>
-              <span className="absolute text-sm font-bold">{avgProgress}%</span>
-            </div>
-            <div>
-              <div className="text-lg font-semibold">Overall Progress</div>
-              <div className="text-slate-400 text-sm">{totalCount} total tasks</div>
-            </div>
-          </div>
-          <div className="flex justify-between pt-4 border-t border-slate-700">
-            <div className="text-center">
-              <div className="text-xl font-bold text-orange-400">{totalCount - completedCount - inProgressCount}</div>
-              <div className="text-xs text-slate-400">Not Started</div>
-            </div>
-            <div className="text-center">
-              <div className="text-xl font-bold text-yellow-400">{inProgressCount}</div>
-              <div className="text-xs text-slate-400">In Progress</div>
-            </div>
-            <div className="text-center">
-              <div className="text-xl font-bold text-green-400">{completedCount}</div>
-              <div className="text-xs text-slate-400">Completed</div>
-            </div>
-          </div>
-        </div>
-  
-        {/* Search Bar */}
-        <div className="px-4 mt-4" onClick={(e) => e.stopPropagation()}>
-          <div className="relative">
-            <Icon name="Search" size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"/>
+
+          {/* Search input */}
+          {searchQuery !== '' && (
             <input
               type="text"
               placeholder="Search tasks..."
-              value={searchQuery}
+              value={searchQuery.trim() ? searchQuery : ''}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-800 rounded-xl pl-10 pr-10 py-3 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-violet-500 focus:bg-slate-700"
+              className="w-full mt-2 rounded-xl px-4 py-2.5 text-sm outline-none"
+              style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
+              autoFocus
             />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')} 
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white"
-              >
-                <Icon name="X" size={18}/>
-              </button>
-            )}
-          </div>
-          {searchQuery && (
-            <p className="text-slate-400 text-xs mt-2">
-              Found {searchedTasks.length} task{searchedTasks.length !== 1 ? 's' : ''} across all months
-            </p>
           )}
-        </div>
 
-        {/* Filter and Sort Controls */}
-        <div className="px-4 mt-3 flex items-center justify-between gap-3" onClick={(e) => e.stopPropagation()}>
-          {/* Filter Dropdown */}
-          <div className="relative flex-1">
-            <button 
-              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-              className="w-full bg-slate-800 rounded-xl px-4 py-2.5 text-sm font-medium text-white flex items-center justify-between hover:bg-slate-700"
-            >
-              <span className="flex items-center gap-2">
-                <Icon name="Filter" size={16}/>
-                {filter === 'all' ? 'All' : 
-                 filter === 'pending' ? 'To Do' : 
-                 filter === 'inprogress' ? 'In Progress' : 
-                 filter === 'completed' ? 'Done' : 
-                 filter === 'overdue' ? 'Overdue' : 'All'}
-              </span>
-              <Icon name={showFilterDropdown ? "ChevronUp" : "ChevronDown"} size={16}/>
-            </button>
-            {showFilterDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 rounded-xl shadow-lg z-10 border border-slate-700">
-                {[['all','All'],['pending','To Do'],['inprogress','In Progress'],['completed','Done'],['overdue','Overdue']].map(([k,l]) => (
-                  <button 
-                    key={k} 
-                    onClick={() => { setFilter(k); setShowFilterDropdown(false); }} 
-                    className={`w-full px-4 py-2.5 text-sm font-medium text-left hover:bg-slate-700 first:rounded-t-xl last:rounded-b-xl flex items-center gap-2 ${
-                      filter===k ? 'bg-violet-600/20 text-violet-400' : 'text-slate-300'
-                    }`}
-                  >
-                    {filter === k && <Icon name="Check" size={16}/>}
-                    <span className={filter === k ? '' : 'ml-6'}>{l}</span>
+          {/* Sort dropdown */}
+          {showFilterDropdown && (
+            <div className="relative">
+              <div className="popover-enter absolute right-0 top-2 rounded-xl py-1 z-30"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-elevated)', minWidth: 160 }}>
+                {[
+                  { id: 'priority', label: 'Priority' },
+                  { id: 'dueDate', label: 'Due Date' },
+                  { id: 'progress', label: 'Progress' },
+                ].map(s => (
+                  <button key={s.id}
+                    onClick={() => { setSortBy(s.id); setShowFilterDropdown(false); }}
+                    className="pressable w-full text-left px-4 py-2 text-sm hover-bg"
+                    style={{ color: sortBy === s.id ? 'var(--accent)' : 'var(--text-primary)' }}>
+                    {s.label}
                   </button>
                 ))}
               </div>
-            )}
-          </div>
-
-          {/* Sort Options */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 whitespace-nowrap">Sort:</span>
-            {[['priority','Priority'],['dueDate','Due Date'],['progress','Progress']].map(([k,l]) => (
-              <button 
-                key={k} 
-                onClick={() => setSortBy(k)} 
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap ${sortBy===k?'bg-violet-600 text-white':'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
-              >
-                {l}
-              </button>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
-  
+
         {/* Task List */}
-        <div className="px-4 mt-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Icon name="ListTodo" size={18} color="#a78bfa"/>
-            <span className="font-medium">
-              {searchQuery ? `Search Results (${sortedTasks.length})` : 'Tasks'}
-            </span>
-          </div>
-  
+        <div className="px-4 space-y-3" onClick={closeAll}>
           {sortedTasks.length === 0 ? (
-            <div className="text-center py-12 text-slate-500">
-              <Icon name={searchQuery ? "Search" : "Circle"} size={48} className="mx-auto opacity-50"/>
-              <p className="mt-3">
-                {searchQuery 
-                  ? `No tasks found for "${searchQuery}"` 
-                  : filter==='all'?'No tasks this month':'No tasks here'}
+            <div className="text-center py-16">
+              <Icon name="CheckCircle" size={64} className="mx-auto opacity-20" color="var(--text-muted)" />
+              <p className="mt-4 text-lg" style={{ color: 'var(--text-muted)' }}>
+                {filter !== 'all' ? 'No tasks match this filter' : isCurrentMonth ? 'No tasks yet' : 'No tasks this month'}
               </p>
-              {searchQuery && (
-                <button 
-                  onClick={() => setSearchQuery('')} 
-                  className="mt-2 text-violet-400 text-sm hover:text-violet-300"
-                >
-                  Clear search
-                </button>
-              )}
             </div>
           ) : (
-            <div className="space-y-3">
-              {sortedTasks.map(task => (
+            sortedTasks.map((task, i) => (
+              <div key={task.id} className="stagger-item" style={{ animationDelay: `${i * 40}ms` }}>
                 <TaskItem
-                  key={task.id}
                   task={task}
                   isExpanded={expandedTask === task.id}
                   expandedSubtask={expandedSubtask}
                   addingSubtaskTo={addingSubtaskTo}
                   newSubtask={newSubtask}
                   setNewSubtask={setNewSubtask}
-                  onToggleExpand={() => setExpandedTask(expandedTask === task.id ? null : task.id)}
-                  onToggleSubtask={(id) => setExpandedSubtask(expandedSubtask === id ? null : id)}
+                  onToggleExpand={() => { setExpandedTask(expandedTask === task.id ? null : task.id); setExpandedSubtask(null); }}
+                  onToggleSubtask={(stId) => setExpandedSubtask(expandedSubtask === stId ? null : stId)}
                   onEdit={() => openEditModal(task)}
                   onDelete={() => setDeleteConfirm(task.id)}
                   onUpdateProgress={(p) => updateProgress(task.id, p)}
@@ -1506,23 +1378,29 @@ function App() {
                   onDeleteSubtask={(stId) => deleteSubtask(task.id, stId)}
                   onUpdateSubtaskProgress={(stId, p) => updateSubtaskProgress(task.id, stId, p)}
                   onToggleAddSubtask={() => setAddingSubtaskTo(addingSubtaskTo === task.id ? null : task.id)}
-                  searchQuery={searchQuery}
+                  searchQuery={searchQuery.trim() || ''}
                 />
-              ))}
-            </div>
+              </div>
+            ))
           )}
         </div>
-  
-        {/* Add Task Button */}
-        <button onClick={(e) => { e.stopPropagation(); setShowAdd(true); }} className="fixed bottom-20 right-6 w-14 h-14 bg-violet-600 rounded-full flex items-center justify-center shadow-lg shadow-violet-600/30 hover:bg-violet-500">
-          <Icon name="Plus" size={28}/>
+
+        {/* FAB */}
+        <button className="fab" onClick={() => setShowAdd(true)}>
+          <Icon name="Plus" size={24} color="white" />
         </button>
-  
+
+        {/* Modals */}
+        {showAdd && <AddTaskModal newTask={newTask} setNewTask={setNewTask} onAdd={addTask} onCancel={() => setShowAdd(false)} />}
+        {editingTask && <EditTaskModal editForm={editForm} setEditForm={setEditForm} onSave={saveEdit} onCancel={() => setEditingTask(null)} />}
+        {deleteConfirm && <DeleteConfirmModal task={taskToDelete} onCancel={() => setDeleteConfirm(null)} onConfirm={() => moveToTrash(deleteConfirm)} />}
+
+        {/* Bottom Nav */}
         <BottomNav currentPage={currentPage} setCurrentPage={setCurrentPage} trashCount={trash.length} />
       </div>
     );
   }
-  
+
   // ============================================
   // RENDER APP
   // ============================================

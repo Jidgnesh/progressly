@@ -51,6 +51,15 @@ function App() {
       }
     }, [successMessage]);
 
+    // Auto-complete email with @gmail.com if no @ present
+    const completeEmail = (email) => {
+      const trimmed = email.trim();
+      if (trimmed && !trimmed.includes('@')) {
+        return trimmed + '@gmail.com';
+      }
+      return trimmed;
+    };
+
     // Check if Firebase is available
     const isFirebaseAvailable = () => {
       try {
@@ -633,7 +642,7 @@ function App() {
 
               {successMessage && (
                 <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-xl text-green-400 text-sm flex items-center gap-2">
-                  <Icon name="check-circle" size={16} color="#4ade80" />
+                  <Icon name="CircleCheck" size={16} color="#4ade80" />
                   {successMessage}
                 </div>
               )}
@@ -654,14 +663,23 @@ function App() {
                   </div>
                   <div>
                     <label className="block text-sm text-slate-400 mb-2">Email</label>
-                    <input
-                      type="email"
-                      value={authForm.email}
-                      onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
-                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="Enter your email"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="email"
+                        value={authForm.email}
+                        onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
+                        onBlur={() => setAuthForm({...authForm, email: completeEmail(authForm.email)})}
+                        className="w-full bg-slate-700 rounded-xl px-4 py-3 pr-28 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                        placeholder="Enter your email or username"
+                        required
+                      />
+                      {!authForm.email.includes('@') && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm pointer-events-none">
+                          @gmail.com
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm text-slate-400 mb-2">Password</label>
@@ -680,7 +698,7 @@ function App() {
                         onClick={() => setShowPassword({...showPassword, password: !showPassword.password})}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
                       >
-                        <Icon name={showPassword.password ? 'eye-off' : 'eye'} size={20} />
+                        <Icon name={showPassword.password ? 'Eye' : 'EyeOff'} size={20} />
                       </button>
                     </div>
                   </div>
@@ -700,7 +718,7 @@ function App() {
                         onClick={() => setShowPassword({...showPassword, confirmPassword: !showPassword.confirmPassword})}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
                       >
-                        <Icon name={showPassword.confirmPassword ? 'eye-off' : 'eye'} size={20} />
+                        <Icon name={showPassword.confirmPassword ? 'Eye' : 'EyeOff'} size={20} />
                       </button>
                     </div>
                   </div>
@@ -718,14 +736,23 @@ function App() {
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div>
                     <label className="block text-sm text-slate-400 mb-2">Email</label>
-                    <input
-                      type="email"
-                      value={authForm.email}
-                      onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
-                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="Enter your email"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="email"
+                        value={authForm.email}
+                        onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
+                        onBlur={() => setAuthForm({...authForm, email: completeEmail(authForm.email)})}
+                        className="w-full bg-slate-700 rounded-xl px-4 py-3 pr-28 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                        placeholder="Enter your email or username"
+                        required
+                      />
+                      {!authForm.email.includes('@') && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm pointer-events-none">
+                          @gmail.com
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm text-slate-400 mb-2">Password</label>
@@ -743,7 +770,7 @@ function App() {
                         onClick={() => setShowPassword({...showPassword, password: !showPassword.password})}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
                       >
-                        <Icon name={showPassword.password ? 'eye-off' : 'eye'} size={20} />
+                        <Icon name={showPassword.password ? 'Eye' : 'EyeOff'} size={20} />
                       </button>
                     </div>
                   </div>
@@ -778,7 +805,7 @@ function App() {
                   {resetEmailSent ? (
                     <div className="space-y-4 text-center">
                       <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Icon name="mail-check" size={32} className="text-green-400" color="#4ade80" />
+                        <Icon name="MailCheck" size={32} className="text-green-400" color="#4ade80" />
                       </div>
                       <h3 className="text-lg font-semibold text-white">Check your inbox</h3>
                       <p className="text-sm text-slate-400">
@@ -808,15 +835,24 @@ function App() {
                       </div>
                       <div>
                         <label className="block text-sm text-slate-400 mb-2">Email</label>
-                        <input
-                          type="email"
-                          value={forgotEmail}
-                          onChange={(e) => setForgotEmail(e.target.value)}
-                          className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
-                          placeholder="Enter your email"
-                          required
-                          autoFocus
-                        />
+                        <div className="relative">
+                          <input
+                            type="text"
+                            inputMode="email"
+                            value={forgotEmail}
+                            onChange={(e) => setForgotEmail(e.target.value)}
+                            onBlur={() => setForgotEmail(completeEmail(forgotEmail))}
+                            className="w-full bg-slate-700 rounded-xl px-4 py-3 pr-28 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                            placeholder="Enter your email or username"
+                            required
+                            autoFocus
+                          />
+                          {!forgotEmail.includes('@') && (
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm pointer-events-none">
+                              @gmail.com
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <button
                         type="submit"
@@ -857,7 +893,7 @@ function App() {
                             onClick={() => setShowPassword({...showPassword, newPassword: !showPassword.newPassword})}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
                           >
-                            <Icon name={showPassword.newPassword ? 'eye-off' : 'eye'} size={20} />
+                            <Icon name={showPassword.newPassword ? 'Eye' : 'EyeOff'} size={20} />
                           </button>
                         </div>
                       </div>
@@ -878,7 +914,7 @@ function App() {
                             onClick={() => setShowPassword({...showPassword, confirmNewPassword: !showPassword.confirmNewPassword})}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
                           >
-                            <Icon name={showPassword.confirmNewPassword ? 'eye-off' : 'eye'} size={20} />
+                            <Icon name={showPassword.confirmNewPassword ? 'Eye' : 'EyeOff'} size={20} />
                           </button>
                         </div>
                       </div>

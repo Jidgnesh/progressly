@@ -1,4 +1,82 @@
 // ============================================
+// USE SWIPE HOOK
+// ============================================
+const useSwipe = (onSwipeRight, onSwipeLeft, onLongPress, threshold = 0.4) => {
+  const ref = React.useRef(null);
+  const startX = React.useRef(0);
+  const startY = React.useRef(0);
+  const startTime = React.useRef(0);
+  const isDragging = React.useRef(false);
+  const direction = React.useRef(null);
+  const longPressTimer = React.useRef(null);
+  const [offset, setOffset] = React.useState(0);
+  const [releasing, setReleasing] = React.useState(false);
+
+  const handlePointerDown = (e) => {
+    if (isDragging.current) return;
+    startX.current = e.clientX;
+    startY.current = e.clientY;
+    startTime.current = Date.now();
+    direction.current = null;
+    isDragging.current = false;
+    setReleasing(false);
+
+    longPressTimer.current = setTimeout(() => {
+      if (!isDragging.current && direction.current !== 'horizontal') {
+        if (navigator.vibrate) navigator.vibrate(10);
+        onLongPress && onLongPress();
+      }
+    }, 500);
+  };
+
+  const handlePointerMove = (e) => {
+    const dx = e.clientX - startX.current;
+    const dy = e.clientY - startY.current;
+
+    if (!direction.current) {
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      direction.current = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
+      if (direction.current === 'horizontal') {
+        e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
+        isDragging.current = true;
+        clearTimeout(longPressTimer.current);
+      } else {
+        clearTimeout(longPressTimer.current);
+      }
+    }
+
+    if (direction.current !== 'horizontal') return;
+    e.preventDefault();
+    setOffset(dx);
+  };
+
+  const handlePointerUp = (e) => {
+    clearTimeout(longPressTimer.current);
+
+    if (!isDragging.current) return;
+    isDragging.current = false;
+
+    const dx = e.clientX - startX.current;
+    const elapsed = Date.now() - startTime.current;
+    const velocity = Math.abs(dx) / elapsed;
+    const cardWidth = ref.current?.offsetWidth || 300;
+    const percent = Math.abs(dx) / cardWidth;
+
+    if ((velocity > 0.11 || percent > threshold) && dx > 0) {
+      onSwipeRight && onSwipeRight();
+    } else if ((velocity > 0.11 || percent > threshold) && dx < 0) {
+      onSwipeLeft && onSwipeLeft();
+    }
+
+    setReleasing(true);
+    setOffset(0);
+    setTimeout(() => setReleasing(false), 200);
+  };
+
+  return { ref, offset, releasing, handlePointerDown, handlePointerMove, handlePointerUp };
+};
+
+// ============================================
 // MAIN APP COMPONENT
 // ============================================
 function App() {
@@ -48,6 +126,9 @@ function App() {
     // Theme state
     const [themePreference, setThemePreference] = useState(() => initTheme());
     const [showStats, setShowStats] = useState(false);
+
+    // Celebration state
+    const [celebratingTask, setCelebratingTask] = useState(null);
 
     // Toast functions
     const showToast = (message, type = 'success') => {
@@ -581,7 +662,16 @@ function App() {
     };
 
     const updateProgress = (id, progress) => {
-      saveTasks(tasks.map(t => t.id === id ? { ...t, progress: Math.min(100, Math.max(0, progress)) } : t));
+      const clamped = Math.min(100, Math.max(0, progress));
+      const prevTask = tasks.find(t => t.id === id);
+      const wasComplete = prevTask && getTaskProgress(prevTask) === 100;
+
+      saveTasks(tasks.map(t => t.id === id ? { ...t, progress: clamped } : t));
+
+      if (clamped === 100 && !wasComplete) {
+        setCelebratingTask(id);
+        setTimeout(() => setCelebratingTask(null), 600);
+      }
     };
 
     // ==================== SUBTASK OPERATIONS ====================
@@ -1112,11 +1202,22 @@ function App() {
                 <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{trash.length} deleted task{trash.length !== 1 ? 's' : ''}</p>
               </div>
               {trash.length > 0 && (
-                <button onClick={emptyTrash}
-                  className="pressable px-4 py-2 rounded-xl text-sm font-medium"
-                  style={{ background: 'var(--divider)', color: 'var(--text-primary)' }}>
-                  Empty All
-                </button>
+                <div className="relative">
+                  <button
+                    className="hold-delete-btn pressable relative overflow-hidden px-4 py-2 rounded-xl text-sm font-medium"
+                    style={{ background: 'var(--divider)', color: 'var(--text-primary)' }}
+                    onPointerUp={(e) => {
+                      const start = parseInt(e.currentTarget.dataset.pressStart || '0');
+                      if (Date.now() - start > 1900) emptyTrash();
+                    }}
+                    onPointerDown={(e) => {
+                      e.currentTarget.dataset.pressStart = Date.now();
+                    }}
+                  >
+                    <div className="hold-delete-overlay" />
+                    <span className="relative z-10">Hold to Empty All</span>
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -1362,7 +1463,7 @@ function App() {
           ) : (
             sortedTasks.map((task, i) => (
               <div key={task.id} className="stagger-item" style={{ animationDelay: `${i * 40}ms` }}>
-                <TaskItem
+                <SwipeableTaskItem
                   task={task}
                   isExpanded={expandedTask === task.id}
                   expandedSubtask={expandedSubtask}
@@ -1379,6 +1480,10 @@ function App() {
                   onUpdateSubtaskProgress={(stId, p) => updateSubtaskProgress(task.id, stId, p)}
                   onToggleAddSubtask={() => setAddingSubtaskTo(addingSubtaskTo === task.id ? null : task.id)}
                   searchQuery={searchQuery.trim() || ''}
+                  celebrating={celebratingTask === task.id}
+                  onComplete={(id) => updateProgress(id, 100)}
+                  onSwipeDelete={(id) => setDeleteConfirm(id)}
+                  onLongPressEdit={(id) => { const t = tasks.find(x => x.id === id); if (t) openEditModal(t); }}
                 />
               </div>
             ))

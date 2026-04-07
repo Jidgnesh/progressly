@@ -474,7 +474,7 @@ const BottomNav = ({ currentPage, setCurrentPage, trashCount }) => {
 const TaskItem = ({
   task, isExpanded, expandedSubtask, addingSubtaskTo, newSubtask, setNewSubtask,
   onToggleExpand, onToggleSubtask, onEdit, onDelete, onUpdateProgress,
-  onAddSubtask, onDeleteSubtask, onUpdateSubtaskProgress, onToggleAddSubtask, searchQuery
+  onAddSubtask, onDeleteSubtask, onUpdateSubtaskProgress, onToggleAddSubtask, searchQuery, celebrating
 }) => {
   const taskProgress = getTaskProgress(task);
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
@@ -494,7 +494,7 @@ const TaskItem = ({
 
   return (
     <div
-      className={`task-card rounded-2xl ${taskProgress === 100 ? 'opacity-60' : ''}`}
+      className={`task-card rounded-2xl ${taskProgress === 100 ? 'opacity-60' : ''} ${celebrating ? 'celebration-glow' : ''}`}
       style={{
         '--priority-color': priorityColor,
         background: 'var(--bg-card)',
@@ -621,6 +621,41 @@ const TaskItem = ({
           )}
         </div>
       )}
+    </div>
+  );
+};
+
+// ============================================
+// SWIPEABLE TASK ITEM WRAPPER
+// ============================================
+const SwipeableTaskItem = ({ task, onComplete, onSwipeDelete, onLongPressEdit, ...taskProps }) => {
+  const swipe = useSwipe(
+    () => onComplete(task.id),
+    () => onSwipeDelete(task.id),
+    () => onLongPressEdit(task.id)
+  );
+
+  return (
+    <div ref={swipe.ref} className="swipe-card rounded-2xl">
+      {swipe.offset > 0 && (
+        <div className="swipe-bg swipe-bg-right rounded-2xl">
+          <Icon name="Check" size={24} color="var(--priority-low)" />
+        </div>
+      )}
+      {swipe.offset < 0 && (
+        <div className="swipe-bg swipe-bg-left rounded-2xl">
+          <Icon name="Trash2" size={24} color="var(--priority-high)" />
+        </div>
+      )}
+      <div
+        className={`swipe-card-content rounded-2xl ${swipe.releasing ? 'releasing' : ''}`}
+        style={{ transform: `translateX(${swipe.offset}px)` }}
+        onPointerDown={swipe.handlePointerDown}
+        onPointerMove={swipe.handlePointerMove}
+        onPointerUp={swipe.handlePointerUp}
+      >
+        <TaskItem task={task} {...taskProps} />
+      </div>
     </div>
   );
 };

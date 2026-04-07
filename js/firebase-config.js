@@ -17,9 +17,14 @@ if (typeof firebase !== 'undefined') {
     firebase.initializeApp(FIREBASE_CONFIG);
     window.firebaseAuth = firebase.auth();
     window.firebaseDb = firebase.firestore();
-    
+
+    // Set auth persistence to LOCAL — survives browser restarts on all devices
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+      .catch((err) => {
+        console.warn('Failed to set auth persistence:', err);
+      });
+
     // Force Firestore to go online
-    // This ensures Firestore is connected and not in offline mode
     firebase.firestore().enableNetwork()
       .then(() => {
         console.log('Firestore is online');
@@ -27,8 +32,8 @@ if (typeof firebase !== 'undefined') {
       .catch((err) => {
         console.warn('Failed to enable Firestore network:', err);
       });
-    
-    // Enable Firestore offline persistence (optional - allows offline writes)
+
+    // Enable Firestore offline persistence (allows offline reads/writes)
     firebase.firestore().enablePersistence()
       .catch((err) => {
         if (err.code === 'failed-precondition') {
@@ -39,7 +44,7 @@ if (typeof firebase !== 'undefined') {
           console.warn('Firestore persistence error:', err);
         }
       });
-      
+
   } catch (error) {
     console.error('Firebase initialization error:', error);
   }

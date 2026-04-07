@@ -9,16 +9,24 @@ const FirebaseService = {
   // Sign up with email and password
   signUp: async (email, password, name) => {
     try {
-      // Ensure Firestore is online before proceeding
-      await firebase.firestore().enableNetwork();
-      
+      // Ensure Firestore is online (non-blocking — don't fail signup if this errors)
+      try {
+        await firebase.firestore().enableNetwork();
+      } catch (networkErr) {
+        console.warn('enableNetwork failed, proceeding with signup:', networkErr.message);
+      }
+
       const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
-      
+
       // Update user profile with name
-      await user.updateProfile({ displayName: name });
-      
-      // Create user document in Firestore with retry logic
+      try {
+        await user.updateProfile({ displayName: name });
+      } catch (profileErr) {
+        console.warn('Failed to update profile displayName:', profileErr.message);
+      }
+
+      // Create user document in Firestore
       try {
         await firebase.firestore().collection('users').doc(user.uid).set({
           name: name,
@@ -26,10 +34,7 @@ const FirebaseService = {
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       } catch (firestoreError) {
-        // If Firestore fails, still return success for auth
-        // The document can be created later when online
-        console.warn('Firestore document creation failed, but user is authenticated:', firestoreError);
-        // Try to create it in the background
+        console.warn('Firestore document creation failed, will retry:', firestoreError.message);
         setTimeout(async () => {
           try {
             await firebase.firestore().collection('users').doc(user.uid).set({
@@ -42,18 +47,34 @@ const FirebaseService = {
           }
         }, 1000);
       }
-      
+
       return { success: true, user: { uid: user.uid, email: user.email, name: name } };
     } catch (error) {
-      // Provide user-friendly error messages
-      let errorMessage = error.message;
+      // If email is already in use, the user may have been created in a previous
+      // failed attempt. Try signing them in automatically.
       if (error.code === 'auth/email-already-in-use') {
-        errorMessage = 'This email is already registered. Please sign in instead.';
-      } else if (error.code === 'auth/weak-password') {
+        try {
+          const signInResult = await FirebaseService.signIn(email, password);
+          if (signInResult.success) {
+            // Update name if needed
+            const user = firebase.auth().currentUser;
+            if (user && !user.displayName) {
+              try { await user.updateProfile({ displayName: name }); } catch (e) {}
+            }
+            return signInResult;
+          }
+        } catch (signInErr) {
+          // Sign-in also failed — the email genuinely belongs to someone else
+        }
+        return { success: false, error: 'This email is already registered. Please sign in instead.' };
+      }
+
+      let errorMessage = error.message;
+      if (error.code === 'auth/weak-password') {
         errorMessage = 'Password is too weak. Please use a stronger password.';
       } else if (error.code === 'auth/invalid-email') {
         errorMessage = 'Invalid email address. Please check and try again.';
-      } else if (error.message.includes('offline')) {
+      } else if (error.message && error.message.includes('offline')) {
         errorMessage = 'You appear to be offline. Please check your internet connection and try again.';
       }
       return { success: false, error: errorMessage };
@@ -65,24 +86,42 @@ const FirebaseService = {
     try {
       const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
       const user = userCredential.user;
-      
-      // Get user data from Firestore
-      const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
-      const userData = userDoc.data();
-      
-      return { 
-        success: true, 
-        user: { 
-          uid: user.uid, 
-          email: user.email, 
-          name: userData?.name || user.displayName || 'User' 
-        } 
+
+      // Get user data from Firestore (graceful fallback if offline)
+      let userName = user.displayName || 'User';
+      try {
+        const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
+        const userData = userDoc.data();
+        if (userData?.name) userName = userData.name;
+      } catch (firestoreErr) {
+        console.warn('Could not fetch user document during sign-in, using auth profile:', firestoreErr.message);
+      }
+
+      return {
+        success: true,
+        user: {
+          uid: user.uid,
+          email: user.email,
+          name: userName
+        }
       };
     } catch (error) {
-      return { success: false, error: error.message };
+      let errorMessage = error.message;
+      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email. Please sign up first.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address. Please check and try again.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed attempts. Please try again later.';
+      } else if (error.code === 'auth/user-disabled') {
+        errorMessage = 'This account has been disabled. Please contact support.';
+      }
+      return { success: false, error: errorMessage };
     }
   },
-  
+
   // Sign in with Google
   signInWithGoogle: async () => {
     try {
@@ -168,7 +207,7 @@ const FirebaseService = {
   getTasks: async (userId) => {
     try {
       const tasksRef = firebase.firestore().collection('users').doc(userId).collection('tasks');
-      const snapshot = await tasksRef.orderBy('createdAt', 'desc').get();
+      const snapshot = await tasksRef.orderBy('updatedAt', 'desc').get();
       
       const tasks = [];
       snapshot.forEach(doc => {
@@ -196,7 +235,7 @@ const FirebaseService = {
       // Add all new tasks
       tasks.forEach(task => {
         const { id, ...taskData } = task;
-        const taskRef = tasksRef.doc(id || firebase.firestore().collection('tasks').doc().id);
+        const taskRef = tasksRef.doc(id || tasksRef.doc().id);
         batch.set(taskRef, {
           ...taskData,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -242,7 +281,7 @@ const FirebaseService = {
       // Add all new trash items
       trash.forEach(item => {
         const { id, ...itemData } = item;
-        const itemRef = trashRef.doc(id || firebase.firestore().collection('trash').doc().id);
+        const itemRef = trashRef.doc(id || trashRef.doc().id);
         batch.set(itemRef, {
           ...itemData,
           deletedAt: firebase.firestore.FieldValue.serverTimestamp()

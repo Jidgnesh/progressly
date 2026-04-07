@@ -1,4 +1,4 @@
-const CACHE_NAME = 'progressly-v3';
+const CACHE_NAME = 'progressly-v4';
 const ASSETS = [
   '/progressly/',
   '/progressly/index.html',
@@ -7,6 +7,8 @@ const ASSETS = [
   '/progressly/icon-192.png',
   '/progressly/icon-512.png',
   '/progressly/js/constants.js',
+  '/progressly/js/firebase-config.js',
+  '/progressly/js/firebase-service.js',
   '/progressly/js/utils.js',
   '/progressly/js/components.js',
   '/progressly/js/app.js',
@@ -34,15 +36,33 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).then((response) => {
+  const url = new URL(event.request.url);
+
+  // For app files (same origin): network-first so updates are picked up immediately
+  // For CDN/external files: cache-first for speed
+  if (url.origin === self.location.origin) {
+    event.respondWith(
+      fetch(event.request).then((response) => {
         if (response.status === 200) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
         return response;
-      });
-    }).catch(() => caches.match('/progressly/index.html'))
-  );
+      }).catch(() => caches.match(event.request).then((cached) => {
+        return cached || caches.match('/progressly/index.html');
+      }))
+    );
+  } else {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        return cached || fetch(event.request).then((response) => {
+          if (response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        });
+      }).catch(() => caches.match(event.request))
+    );
+  }
 });

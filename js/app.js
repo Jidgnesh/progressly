@@ -35,7 +35,22 @@ function App() {
     const [currentUser, setCurrentUser] = useState(null);
     const [useFirebase, setUseFirebase] = useState(false);
     const [syncing, setSyncing] = useState(false);
-  
+    const [showPassword, setShowPassword] = useState({
+      password: false,
+      confirmPassword: false,
+      newPassword: false,
+      confirmNewPassword: false
+    });
+    const [successMessage, setSuccessMessage] = useState('');
+
+    // Auto-dismiss success message after 5 seconds
+    useEffect(() => {
+      if (successMessage) {
+        const timer = setTimeout(() => setSuccessMessage(''), 5000);
+        return () => clearTimeout(timer);
+      }
+    }, [successMessage]);
+
     // Check if Firebase is available
     const isFirebaseAvailable = () => {
       try {
@@ -69,23 +84,31 @@ function App() {
       if (isFirebaseAvailable()) {
         const user = FirebaseService.getCurrentUser();
         if (user) {
-          const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
-          const userData = userDoc.data();
-          setCurrentUser({ uid: user.uid, email: user.email, name: userData?.name || user.displayName || 'User' });
+          let userName = user.displayName || 'User';
+          try {
+            const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
+            const userData = userDoc.data();
+            if (userData?.name) userName = userData.name;
+          } catch (err) {
+            // Firestore offline or unavailable — fall back to displayName from Auth
+            console.warn('Could not fetch user document, using auth profile:', err.message);
+          }
+          const userInfo = { uid: user.uid, email: user.email, name: userName };
+          setCurrentUser(userInfo);
           setIsAuthenticated(true);
           setUseFirebase(true);
-          return true;
+          return { authenticated: true, user: userInfo, isFirebase: true };
         }
       }
-      
+
       // Fallback to localStorage
       const auth = localStorage.getItem(AUTH_KEY);
       if (auth) {
         setIsAuthenticated(true);
         setUseFirebase(false);
-        return true;
+        return { authenticated: true, user: null, isFirebase: false };
       }
-      return false;
+      return { authenticated: false, user: null, isFirebase: false };
     };
 
     const handleSignUp = async (e) => {
@@ -192,40 +215,44 @@ function App() {
       setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
     };
 
+    const [resetEmailSent, setResetEmailSent] = useState(false);
+
     const handleForgotPassword = async (e) => {
       e.preventDefault();
       setAuthError('');
-      
+
       if (!forgotEmail) {
         setAuthError('Please enter your email address');
         return;
       }
-      
+
       // Try Firebase first if available
       if (isFirebaseAvailable()) {
         const result = await FirebaseService.resetPassword(forgotEmail);
         if (result.success) {
           setAuthError('');
-          alert('Password reset email sent! Check your inbox and follow the instructions.');
-          setAuthPage('signin');
-          setForgotEmail('');
+          setResetEmailSent(true);
           return;
         } else {
-          setAuthError(result.error || 'Failed to send reset email');
+          let errorMessage = result.error;
+          if (result.error && result.error.includes('user-not-found')) {
+            errorMessage = 'No account found with this email address.';
+          }
+          setAuthError(errorMessage || 'Failed to send reset email');
           return;
         }
       }
-      
+
       // Fallback to localStorage
       const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
       const user = users.find(u => u.email === forgotEmail);
-      
+
       if (!user) {
         setAuthError('No account found with this email address');
         return;
       }
-      
-      // Move to reset password step
+
+      // Move to reset password step (localStorage only)
       setForgotStep('reset');
       setAuthError('');
     };
@@ -233,53 +260,43 @@ function App() {
     const handleResetPassword = async (e) => {
       e.preventDefault();
       setAuthError('');
-      
+
       if (!resetPassword.newPassword || !resetPassword.confirmPassword) {
         setAuthError('Please fill in all fields');
         return;
       }
-      
+
       if (resetPassword.newPassword.length < 6) {
         setAuthError('Password must be at least 6 characters');
         return;
       }
-      
+
       if (resetPassword.newPassword !== resetPassword.confirmPassword) {
         setAuthError('Passwords do not match');
         return;
       }
-      
-      // Try Firebase first if available (but this requires user to be signed in)
-      // For Firebase, password reset is handled via email link
-      if (isFirebaseAvailable()) {
-        setAuthError('Please use the password reset link sent to your email. If you need to reset again, use the "Forgot Password" option.');
-        return;
-      }
-      
-      // Fallback to localStorage
+
+      // localStorage password reset
       const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
       const userIndex = users.findIndex(u => u.email === forgotEmail);
-      
+
       if (userIndex === -1) {
         setAuthError('User not found');
         return;
       }
-      
+
       // Update password
       users[userIndex].password = resetPassword.newPassword;
       localStorage.setItem(USERS_KEY, JSON.stringify(users));
-      
+
       // Show success message and redirect to sign in
       setAuthError('');
       setAuthPage('signin');
       setForgotEmail('');
       setResetPassword({ newPassword: '', confirmPassword: '' });
       setForgotStep('email');
-      
-      // Show success message
-      setTimeout(() => {
-        alert('Password reset successfully! You can now sign in with your new password.');
-      }, 100);
+
+      setSuccessMessage('Password reset successfully! You can now sign in with your new password.');
     };
 
     const handleLogout = async () => {
@@ -298,27 +315,27 @@ function App() {
     useEffect(() => {
       const loadData = async () => {
         try {
-          const authenticated = await checkAuth();
-          if (authenticated) {
-            if (useFirebase && currentUser) {
+          const authResult = await checkAuth();
+          if (authResult.authenticated) {
+            if (authResult.isFirebase && authResult.user) {
               // Load from Firebase
               setSyncing(true);
               try {
-                const tasksResult = await FirebaseService.getTasks(currentUser.uid);
-                const trashResult = await FirebaseService.getTrash(currentUser.uid);
-                
+                const tasksResult = await FirebaseService.getTasks(authResult.user.uid);
+                const trashResult = await FirebaseService.getTrash(authResult.user.uid);
+
                 if (tasksResult.success) {
                   let loadedTasks = tasksResult.tasks || [];
                   loadedTasks = migrateIncompleteTasks(loadedTasks, today);
                   setTasks(loadedTasks);
                 }
-                
+
                 if (trashResult.success) {
                   setTrash(trashResult.trash || []);
                 }
-                
+
                 // Set up real-time listener
-                FirebaseService.subscribeToTasks(currentUser.uid, (tasks) => {
+                FirebaseService.subscribeToTasks(authResult.user.uid, (tasks) => {
                   let loadedTasks = tasks || [];
                   loadedTasks = migrateIncompleteTasks(loadedTasks, today);
                   setTasks(loadedTasks);
@@ -359,10 +376,27 @@ function App() {
           setLoading(false);
         }
       };
-      
+
       loadData();
     }, [isAuthenticated]);
-  
+
+    // Listen for Firebase auth state changes (session expiry, sign-out from another tab)
+    useEffect(() => {
+      if (!isFirebaseAvailable()) return;
+
+      const unsubscribe = FirebaseService.onAuthStateChanged(async (user) => {
+        if (!user) {
+          // User signed out (possibly from another tab or session expired)
+          setCurrentUser(null);
+          setIsAuthenticated(false);
+          setUseFirebase(false);
+          setAuthPage('signin');
+        }
+      });
+
+      return () => unsubscribe();
+    }, []);
+
     // ==================== STORAGE FUNCTIONS ====================
     const saveTasks = async (newTasks) => {
       setTasks(newTasks);
@@ -564,7 +598,7 @@ function App() {
               {authPage !== 'forgot' && (
                 <div className="flex gap-2 mb-6">
                   <button
-                    onClick={() => { setAuthPage('signin'); setAuthError(''); }}
+                    onClick={() => { setAuthPage('signin'); setAuthError(''); setSuccessMessage(''); }}
                     className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
                       authPage === 'signin' ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
                     }`}
@@ -572,7 +606,7 @@ function App() {
                     Sign In
                   </button>
                   <button
-                    onClick={() => { setAuthPage('signup'); setAuthError(''); }}
+                    onClick={() => { setAuthPage('signup'); setAuthError(''); setSuccessMessage(''); }}
                     className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
                       authPage === 'signup' ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
                     }`}
@@ -594,6 +628,13 @@ function App() {
               {authError && (
                 <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-400 text-sm">
                   {authError}
+                </div>
+              )}
+
+              {successMessage && (
+                <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-xl text-green-400 text-sm flex items-center gap-2">
+                  <Icon name="check-circle" size={16} color="#4ade80" />
+                  {successMessage}
                 </div>
               )}
 
@@ -624,26 +665,44 @@ function App() {
                   </div>
                   <div>
                     <label className="block text-sm text-slate-400 mb-2">Password</label>
-                    <input
-                      type="password"
-                      value={authForm.password}
-                      onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
-                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="Create a password"
-                      required
-                      minLength={6}
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword.password ? 'text' : 'password'}
+                        value={authForm.password}
+                        onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
+                        className="w-full bg-slate-700 rounded-xl px-4 py-3 pr-12 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                        placeholder="Create a password"
+                        required
+                        minLength={6}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword({...showPassword, password: !showPassword.password})}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                      >
+                        <Icon name={showPassword.password ? 'eye-off' : 'eye'} size={20} />
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm text-slate-400 mb-2">Confirm Password</label>
-                    <input
-                      type="password"
-                      value={authForm.confirmPassword}
-                      onChange={(e) => setAuthForm({...authForm, confirmPassword: e.target.value})}
-                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="Confirm your password"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword.confirmPassword ? 'text' : 'password'}
+                        value={authForm.confirmPassword}
+                        onChange={(e) => setAuthForm({...authForm, confirmPassword: e.target.value})}
+                        className="w-full bg-slate-700 rounded-xl px-4 py-3 pr-12 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                        placeholder="Confirm your password"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword({...showPassword, confirmPassword: !showPassword.confirmPassword})}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                      >
+                        <Icon name={showPassword.confirmPassword ? 'eye-off' : 'eye'} size={20} />
+                      </button>
+                    </div>
                   </div>
                   <button
                     type="submit"
@@ -670,24 +729,34 @@ function App() {
                   </div>
                   <div>
                     <label className="block text-sm text-slate-400 mb-2">Password</label>
-                    <input
-                      type="password"
-                      value={authForm.password}
-                      onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
-                      className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="Enter your password"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword.password ? 'text' : 'password'}
+                        value={authForm.password}
+                        onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
+                        className="w-full bg-slate-700 rounded-xl px-4 py-3 pr-12 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                        placeholder="Enter your password"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword({...showPassword, password: !showPassword.password})}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                      >
+                        <Icon name={showPassword.password ? 'eye-off' : 'eye'} size={20} />
+                      </button>
+                    </div>
                   </div>
                   <div className="text-right">
                     <button
                       type="button"
-                      onClick={() => { 
-                        setAuthPage('forgot'); 
-                        setAuthError(''); 
-                        setForgotEmail(''); 
+                      onClick={() => {
+                        setAuthPage('forgot');
+                        setAuthError('');
+                        setForgotEmail('');
                         setForgotStep('email');
                         setResetPassword({ newPassword: '', confirmPassword: '' });
+                        setResetEmailSent(false);
                       }}
                       className="text-sm text-violet-400 hover:text-violet-300"
                     >
@@ -706,7 +775,31 @@ function App() {
               {/* Forgot Password Form */}
               {authPage === 'forgot' && (
                 <>
-                  {forgotStep === 'email' ? (
+                  {resetEmailSent ? (
+                    <div className="space-y-4 text-center">
+                      <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Icon name="mail-check" size={32} className="text-green-400" color="#4ade80" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-white">Check your inbox</h3>
+                      <p className="text-sm text-slate-400">
+                        We've sent a password reset link to <span className="text-violet-400 font-medium">{forgotEmail}</span>. Follow the instructions in the email to reset your password.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => { setAuthPage('signin'); setAuthError(''); setForgotEmail(''); setResetEmailSent(false); }}
+                        className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
+                      >
+                        Back to Sign In
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setResetEmailSent(false); }}
+                        className="w-full text-slate-400 hover:text-slate-300 text-sm"
+                      >
+                        Didn't receive it? Try again
+                      </button>
+                    </div>
+                  ) : forgotStep === 'email' ? (
                     <form onSubmit={handleForgotPassword} className="space-y-4">
                       <div className="mb-4">
                         <p className="text-sm text-slate-400">
@@ -733,7 +826,7 @@ function App() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => { setAuthPage('signin'); setAuthError(''); setForgotEmail(''); }}
+                        onClick={() => { setAuthPage('signin'); setAuthError(''); setForgotEmail(''); setResetEmailSent(false); }}
                         className="w-full text-slate-400 hover:text-slate-300 text-sm"
                       >
                         Back to Sign In
@@ -748,28 +841,46 @@ function App() {
                       </div>
                       <div>
                         <label className="block text-sm text-slate-400 mb-2">New Password</label>
-                        <input
-                          type="password"
-                          value={resetPassword.newPassword}
-                          onChange={(e) => setResetPassword({...resetPassword, newPassword: e.target.value})}
-                          className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
-                          placeholder="Enter new password"
-                          required
-                          minLength={6}
-                          autoFocus
-                        />
+                        <div className="relative">
+                          <input
+                            type={showPassword.newPassword ? 'text' : 'password'}
+                            value={resetPassword.newPassword}
+                            onChange={(e) => setResetPassword({...resetPassword, newPassword: e.target.value})}
+                            className="w-full bg-slate-700 rounded-xl px-4 py-3 pr-12 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                            placeholder="Enter new password"
+                            required
+                            minLength={6}
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword({...showPassword, newPassword: !showPassword.newPassword})}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                          >
+                            <Icon name={showPassword.newPassword ? 'eye-off' : 'eye'} size={20} />
+                          </button>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm text-slate-400 mb-2">Confirm New Password</label>
-                        <input
-                          type="password"
-                          value={resetPassword.confirmPassword}
-                          onChange={(e) => setResetPassword({...resetPassword, confirmPassword: e.target.value})}
-                          className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
-                          placeholder="Confirm new password"
-                          required
-                          minLength={6}
-                        />
+                        <div className="relative">
+                          <input
+                            type={showPassword.confirmNewPassword ? 'text' : 'password'}
+                            value={resetPassword.confirmPassword}
+                            onChange={(e) => setResetPassword({...resetPassword, confirmPassword: e.target.value})}
+                            className="w-full bg-slate-700 rounded-xl px-4 py-3 pr-12 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500"
+                            placeholder="Confirm new password"
+                            required
+                            minLength={6}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword({...showPassword, confirmNewPassword: !showPassword.confirmNewPassword})}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                          >
+                            <Icon name={showPassword.confirmNewPassword ? 'eye-off' : 'eye'} size={20} />
+                          </button>
+                        </div>
                       </div>
                       <button
                         type="submit"
@@ -795,14 +906,14 @@ function App() {
                   {authPage === 'signup' ? (
                     <p>
                       Already have an account?{' '}
-                      <button onClick={() => { setAuthPage('signin'); setAuthError(''); }} className="text-violet-400 hover:text-violet-300">
+                      <button onClick={() => { setAuthPage('signin'); setAuthError(''); setSuccessMessage(''); }} className="text-violet-400 hover:text-violet-300">
                         Sign In
                       </button>
                     </p>
                   ) : (
                     <p>
                       Don't have an account?{' '}
-                      <button onClick={() => { setAuthPage('signup'); setAuthError(''); }} className="text-violet-400 hover:text-violet-300">
+                      <button onClick={() => { setAuthPage('signup'); setAuthError(''); setSuccessMessage(''); }} className="text-violet-400 hover:text-violet-300">
                         Sign Up
                       </button>
                     </p>

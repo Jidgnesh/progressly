@@ -90,6 +90,7 @@ const FirebaseService = {
       // Get user data from Firestore (graceful fallback if offline)
       let userName = user.displayName || 'User';
       try {
+        await FirebaseService.ensureOnline();
         const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
         const userData = userDoc.data();
         if (userData?.name) userName = userData.name;
@@ -126,31 +127,52 @@ const FirebaseService = {
   signInWithGoogle: async () => {
     try {
       const provider = new firebase.auth.GoogleAuthProvider();
-      const userCredential = await firebase.auth().signInWithPopup(provider);
-      const user = userCredential.user;
-      
-      // Check if user document exists, create if not
-      const userRef = firebase.firestore().collection('users').doc(user.uid);
-      const userDoc = await userRef.get();
-      
-      if (!userDoc.exists) {
-        await userRef.set({
-          name: user.displayName,
-          email: user.email,
-          picture: user.photoURL,
-          provider: 'google',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+
+      // Try popup first, fall back to redirect if it fails
+      let user;
+      try {
+        const userCredential = await firebase.auth().signInWithPopup(provider);
+        user = userCredential.user;
+      } catch (popupErr) {
+        // Popup blocked, closed, or session storage issue — use redirect
+        if (popupErr.code === 'auth/popup-blocked' ||
+            popupErr.code === 'auth/popup-closed-by-user' ||
+            popupErr.code === 'auth/cancelled-popup-request' ||
+            popupErr.message.includes('sessionStorage') ||
+            popupErr.message.includes('initial state')) {
+          await firebase.auth().signInWithRedirect(provider);
+          return { success: true, redirect: true };
+        }
+        throw popupErr;
       }
-      
-      return { 
-        success: true, 
-        user: { 
-          uid: user.uid, 
-          email: user.email, 
+
+      // Create user document in Firestore (graceful if offline)
+      try {
+        await FirebaseService.ensureOnline();
+        const userRef = firebase.firestore().collection('users').doc(user.uid);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+          await userRef.set({
+            name: user.displayName,
+            email: user.email,
+            picture: user.photoURL,
+            provider: 'google',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+      } catch (firestoreErr) {
+        console.warn('Could not access Firestore during Google sign-in, using auth profile:', firestoreErr.message);
+      }
+
+      return {
+        success: true,
+        user: {
+          uid: user.uid,
+          email: user.email,
           name: user.displayName,
           picture: user.photoURL
-        } 
+        }
       };
     } catch (error) {
       return { success: false, error: error.message };
@@ -202,10 +224,20 @@ const FirebaseService = {
   },
   
   // ==================== FIRESTORE (TASKS) ====================
-  
+
+  // Ensure Firestore is online before operations
+  ensureOnline: async () => {
+    try {
+      await firebase.firestore().enableNetwork();
+    } catch (e) {
+      console.warn('Could not enable Firestore network:', e.message);
+    }
+  },
+
   // Get user's tasks
   getTasks: async (userId) => {
     try {
+      await FirebaseService.ensureOnline();
       const tasksRef = firebase.firestore().collection('users').doc(userId).collection('tasks');
       const snapshot = await tasksRef.orderBy('updatedAt', 'desc').get();
       
@@ -223,6 +255,7 @@ const FirebaseService = {
   // Save tasks
   saveTasks: async (userId, tasks) => {
     try {
+      await FirebaseService.ensureOnline();
       const batch = firebase.firestore().batch();
       const tasksRef = firebase.firestore().collection('users').doc(userId).collection('tasks');
       
@@ -252,6 +285,7 @@ const FirebaseService = {
   // Get user's trash
   getTrash: async (userId) => {
     try {
+      await FirebaseService.ensureOnline();
       const trashRef = firebase.firestore().collection('users').doc(userId).collection('trash');
       const snapshot = await trashRef.orderBy('deletedAt', 'desc').get();
       
@@ -269,6 +303,7 @@ const FirebaseService = {
   // Save trash
   saveTrash: async (userId, trash) => {
     try {
+      await FirebaseService.ensureOnline();
       const batch = firebase.firestore().batch();
       const trashRef = firebase.firestore().collection('users').doc(userId).collection('trash');
       

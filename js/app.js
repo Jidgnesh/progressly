@@ -91,6 +91,33 @@ function App() {
     const checkAuth = async () => {
       // Check Firebase first if available
       if (isFirebaseAvailable()) {
+        // Handle Google redirect result (when signInWithRedirect was used)
+        try {
+          const redirectResult = await firebase.auth().getRedirectResult();
+          if (redirectResult && redirectResult.user) {
+            const rUser = redirectResult.user;
+            // Create Firestore doc if needed
+            try {
+              await FirebaseService.ensureOnline();
+              const userRef = firebase.firestore().collection('users').doc(rUser.uid);
+              const userDoc = await userRef.get();
+              if (!userDoc.exists) {
+                await userRef.set({
+                  name: rUser.displayName,
+                  email: rUser.email,
+                  picture: rUser.photoURL,
+                  provider: 'google',
+                  createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+              }
+            } catch (e) {
+              console.warn('Could not create user doc after redirect:', e.message);
+            }
+          }
+        } catch (redirectErr) {
+          console.warn('getRedirectResult error:', redirectErr.message);
+        }
+
         const user = FirebaseService.getCurrentUser();
         if (user) {
           let userName = user.displayName || 'User';
@@ -123,8 +150,10 @@ function App() {
     const handleSignUp = async (e) => {
       e.preventDefault();
       setAuthError('');
-      
-      if (!authForm.name || !authForm.email || !authForm.password) {
+      const completedEmail = completeEmail(authForm.email);
+      setAuthForm(prev => ({...prev, email: completedEmail}));
+
+      if (!authForm.name || !completedEmail || !authForm.password) {
         setAuthError('All fields are required');
         return;
       }
@@ -141,7 +170,7 @@ function App() {
       
       // Try Firebase first if available
       if (isFirebaseAvailable()) {
-        const result = await FirebaseService.signUp(authForm.email, authForm.password, authForm.name);
+        const result = await FirebaseService.signUp(completedEmail, authForm.password, authForm.name);
         if (result.success) {
           setCurrentUser(result.user);
           setIsAuthenticated(true);
@@ -164,7 +193,7 @@ function App() {
       
       // Fallback to localStorage (only if Firebase is not available)
       const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-      if (users.find(u => u.email === authForm.email)) {
+      if (users.find(u => u.email === completedEmail)) {
         setAuthError('Email already exists in local storage. Please use Firebase sign-up or use a different email.');
         return;
       }
@@ -172,14 +201,14 @@ function App() {
       const newUser = {
         id: Date.now(),
         name: authForm.name,
-        email: authForm.email,
+        email: completedEmail,
         password: authForm.password, // In production, hash this!
         createdAt: Date.now()
       };
       
       users.push(newUser);
       localStorage.setItem(USERS_KEY, JSON.stringify(users));
-      localStorage.setItem(AUTH_KEY, JSON.stringify({ email: authForm.email, name: authForm.name }));
+      localStorage.setItem(AUTH_KEY, JSON.stringify({ email: completedEmail, name: authForm.name }));
       setIsAuthenticated(true);
       setUseFirebase(false);
       setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
@@ -188,15 +217,17 @@ function App() {
     const handleSignIn = async (e) => {
       e.preventDefault();
       setAuthError('');
-      
-      if (!authForm.email || !authForm.password) {
+      const completedEmail = completeEmail(authForm.email);
+      setAuthForm(prev => ({...prev, email: completedEmail}));
+
+      if (!completedEmail || !authForm.password) {
         setAuthError('Email and password are required');
         return;
       }
-      
+
       // Try Firebase first if available
       if (isFirebaseAvailable()) {
-        const result = await FirebaseService.signIn(authForm.email, authForm.password);
+        const result = await FirebaseService.signIn(completedEmail, authForm.password);
         if (result.success) {
           setCurrentUser(result.user);
           setIsAuthenticated(true);
@@ -211,7 +242,7 @@ function App() {
       
       // Fallback to localStorage
       const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-      const user = users.find(u => u.email === authForm.email && u.password === authForm.password);
+      const user = users.find(u => u.email === completedEmail && u.password === authForm.password);
       
       if (!user) {
         setAuthError('Invalid email or password');
@@ -229,15 +260,17 @@ function App() {
     const handleForgotPassword = async (e) => {
       e.preventDefault();
       setAuthError('');
+      const completedForgotEmail = completeEmail(forgotEmail);
+      setForgotEmail(completedForgotEmail);
 
-      if (!forgotEmail) {
+      if (!completedForgotEmail) {
         setAuthError('Please enter your email address');
         return;
       }
 
       // Try Firebase first if available
       if (isFirebaseAvailable()) {
-        const result = await FirebaseService.resetPassword(forgotEmail);
+        const result = await FirebaseService.resetPassword(completedForgotEmail);
         if (result.success) {
           setAuthError('');
           setResetEmailSent(true);
@@ -254,7 +287,7 @@ function App() {
 
       // Fallback to localStorage
       const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-      const user = users.find(u => u.email === forgotEmail);
+      const user = users.find(u => u.email === completedForgotEmail);
 
       if (!user) {
         setAuthError('No account found with this email address');
@@ -306,6 +339,33 @@ function App() {
       setForgotStep('email');
 
       setSuccessMessage('Password reset successfully! You can now sign in with your new password.');
+    };
+
+    const handleGoogleSignIn = async () => {
+      setAuthError('');
+      if (!isFirebaseAvailable()) {
+        setAuthError('Google Sign-In requires Firebase. Please use email instead.');
+        return;
+      }
+      const result = await FirebaseService.signInWithGoogle();
+      if (result.success && result.redirect) {
+        // Page will reload after redirect — nothing more to do
+        return;
+      }
+      if (result.success) {
+        setCurrentUser(result.user);
+        setIsAuthenticated(true);
+        setUseFirebase(true);
+        setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
+      } else {
+        let errorMessage = result.error;
+        if (result.error && result.error.includes('popup-closed-by-user')) {
+          errorMessage = 'Sign-in cancelled. Please try again.';
+        } else if (result.error && result.error.includes('popup-blocked')) {
+          errorMessage = 'Pop-up blocked by browser. Please allow pop-ups and try again.';
+        }
+        setAuthError(errorMessage || 'Google Sign-In failed');
+      }
     };
 
     const handleLogout = async () => {
@@ -728,6 +788,24 @@ function App() {
                   >
                     Sign Up
                   </button>
+                  <div className="flex items-center gap-3 my-1">
+                    <div className="flex-1 h-px bg-slate-600"></div>
+                    <span className="text-slate-500 text-xs">or</span>
+                    <div className="flex-1 h-px bg-slate-600"></div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignIn}
+                    className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-3 border border-slate-600"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 48 48">
+                      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                    </svg>
+                    Continue with Google
+                  </button>
                 </form>
               )}
 
@@ -795,6 +873,24 @@ function App() {
                     className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl transition-all"
                   >
                     Sign In
+                  </button>
+                  <div className="flex items-center gap-3 my-1">
+                    <div className="flex-1 h-px bg-slate-600"></div>
+                    <span className="text-slate-500 text-xs">or</span>
+                    <div className="flex-1 h-px bg-slate-600"></div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignIn}
+                    className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-3 border border-slate-600"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 48 48">
+                      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                    </svg>
+                    Continue with Google
                   </button>
                 </form>
               )}

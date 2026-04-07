@@ -214,5 +214,8 @@ Progressly - Google Play package.zip
 *.keystore
 signing-key-info.txt
 
+# Claude Code
+.claude/
+
 # macOS
 .DS_Store

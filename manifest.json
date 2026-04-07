@@ -1,23 +1,70 @@
 {
-  "name": "Progressly",
+  "name": "Progressly - Monthly Task Planner",
   "short_name": "Progressly",
+  "description": "Personal monthly planner with task progress tracking. Organize tasks, track subtasks, monitor completion stats, and sync across devices.",
   "start_url": "/progressly/",
   "scope": "/progressly/",
+  "id": "/progressly/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#4F46E5",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#7c3aed",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["productivity", "utilities"],
   "icons": [
     {
       "src": "/progressly/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/progressly/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/progressly/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/progressly/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/progressly/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Progressly Task Dashboard"
+    },
+    {
+      "src": "/progressly/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Progressly Mobile View"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add Task",
+      "short_name": "Add",
+      "url": "/progressly/?action=add",
+      "icons": [
+        {
+          "src": "/progressly/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

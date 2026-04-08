@@ -47,7 +47,7 @@ const ThemeToggle = ({ preference, onToggle }) => {
 // ============================================
 // TOAST COMPONENT
 // ============================================
-const Toast = ({ message, type = 'success', visible, onDismiss }) => {
+const Toast = ({ message, type = 'success', visible, onDismiss, action }) => {
   const [exiting, setExiting] = React.useState(false);
   const timerRef = React.useRef(null);
 
@@ -105,6 +105,15 @@ const Toast = ({ message, type = 'success', visible, onDismiss }) => {
         <span className="text-sm font-medium flex-1" style={{ color: 'var(--text-primary)' }}>
           {message}
         </span>
+        {action && (
+          <button
+            onClick={action.onClick}
+            className="pressable text-sm font-bold px-2 py-1 rounded-lg"
+            style={{ color: 'var(--accent)' }}
+          >
+            {action.label}
+          </button>
+        )}
         <button
           onClick={() => { setExiting(true); setTimeout(onDismiss, 200); }}
           className="pressable p-1"
@@ -482,7 +491,8 @@ const BottomNav = ({ currentPage, setCurrentPage, trashCount }) => {
                 ...(isActive ? { filter: 'drop-shadow(0 0 8px var(--accent-glow))' } : {}),
               }}
             >
-              <Icon name={tab.icon} size={24} />
+              <Icon name={tab.icon} size={22} />
+              <span className="text-[10px] font-medium">{tab.label}</span>
               {tab.id === 'trash' && trashCount > 0 && (
                 <span
                   className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-white"

@@ -122,6 +122,7 @@ function App() {
 
     // Toast state (replaces successMessage)
     const [toast, setToast] = useState({ message: '', type: 'success', visible: false });
+    const [pendingComplete, setPendingComplete] = useState(null);
 
     // Theme state
     const [themePreference, setThemePreference] = useState(() => initTheme());
@@ -147,6 +148,14 @@ function App() {
     };
     const dismissToast = () => {
       setToast(prev => ({ ...prev, visible: false }));
+    };
+
+    const undoComplete = () => {
+      if (pendingComplete) {
+        updateProgress(pendingComplete.id, pendingComplete.prevProgress);
+        setPendingComplete(null);
+        dismissToast();
+      }
     };
 
     // Theme toggle handler
@@ -1248,7 +1257,7 @@ function App() {
                     }}
                   >
                     <div className="hold-delete-overlay" />
-                    <span className="relative z-10">Hold to Empty All</span>
+                    <span className="relative z-10">Hold 2s to empty all</span>
                   </button>
                 </div>
               )}
@@ -1294,7 +1303,8 @@ function App() {
             {monthsWithTasks.length === 0 ? (
               <div className="empty-state-enter text-center py-16">
                 <Icon name="History" size={64} className="mx-auto opacity-20" color="var(--text-muted)" />
-                <p className="mt-4 text-lg" style={{ color: 'var(--text-muted)' }}>No history yet</p>
+                <p className="mt-4 text-lg font-medium" style={{ color: 'var(--text-muted)' }}>No history yet</p>
+                <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Completed months will appear here</p>
               </div>
             ) : (
               monthsWithTasks.map((monthData, gi) => {
@@ -1353,7 +1363,13 @@ function App() {
     return (
       <div key="home" className="page-content min-h-screen pb-24" style={{ background: 'var(--bg-base)' }}>
         {/* Toast */}
-        <Toast message={toast.message} type={toast.type} visible={toast.visible} onDismiss={dismissToast} />
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          visible={toast.visible}
+          onDismiss={() => { dismissToast(); setPendingComplete(null); }}
+          action={pendingComplete ? { label: 'Undo', onClick: undoComplete } : null}
+        />
 
         {/* Header */}
         <div className="px-4 pt-6 pb-4">
@@ -1435,7 +1451,7 @@ function App() {
                   style={{
                     background: filter === f.id ? 'var(--accent)' : 'var(--bg-card)',
                     color: filter === f.id ? 'white' : 'var(--text-secondary)',
-                    border: filter === f.id ? 'none' : '1px solid var(--border-card)',
+                    border: filter === f.id ? '1px solid transparent' : '1px solid var(--border-card)',
                   }}
                 >
                   {f.label}
@@ -1475,25 +1491,28 @@ function App() {
 
           {/* Sort dropdown */}
           {showFilterDropdown && (
-            <div className="relative">
-              <div className="popover-enter absolute right-0 top-2 rounded-xl py-1 z-30"
-                role="menu" aria-label="Sort options"
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-elevated)', minWidth: 160 }}>
-                {[
-                  { id: 'priority', label: 'Priority' },
-                  { id: 'dueDate', label: 'Due Date' },
-                  { id: 'progress', label: 'Progress' },
-                ].map(s => (
-                  <button key={s.id}
-                    role="menuitem"
-                    onClick={() => { setSortBy(s.id); setShowFilterDropdown(false); }}
-                    className="pressable w-full text-left px-4 py-2 text-sm hover-bg"
-                    style={{ color: sortBy === s.id ? 'var(--accent)' : 'var(--text-primary)' }}>
-                    {s.label}
-                  </button>
-                ))}
+            <>
+              <div className="fixed inset-0 z-20" onClick={() => setShowFilterDropdown(false)} />
+              <div className="relative">
+                <div className="popover-enter absolute right-0 top-2 rounded-xl py-1 z-30"
+                  role="menu" aria-label="Sort options"
+                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border-elevated)', minWidth: 160 }}>
+                  {[
+                    { id: 'priority', label: 'Priority' },
+                    { id: 'dueDate', label: 'Due Date' },
+                    { id: 'progress', label: 'Progress' },
+                  ].map(s => (
+                    <button key={s.id}
+                      role="menuitem"
+                      onClick={() => { setSortBy(s.id); setShowFilterDropdown(false); }}
+                      className="pressable w-full text-left px-4 py-2 text-sm hover-bg"
+                      style={{ color: sortBy === s.id ? 'var(--accent)' : 'var(--text-primary)' }}>
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
 
@@ -1501,10 +1520,27 @@ function App() {
         <div className="px-4 space-y-3" onClick={closeAll}>
           {sortedTasks.length === 0 ? (
             <div className="empty-state-enter text-center py-16">
-              <Icon name="CheckCircle" size={64} className="mx-auto opacity-20" color="var(--text-muted)" />
-              <p className="mt-4 text-lg" style={{ color: 'var(--text-muted)' }}>
+              <Icon name={filter !== 'all' ? 'Filter' : 'Plus'} size={48} className="mx-auto opacity-20" color="var(--text-muted)" />
+              <p className="mt-4 text-lg font-medium" style={{ color: 'var(--text-muted)' }}>
                 {filter !== 'all' ? 'No tasks match this filter' : isCurrentMonth ? 'No tasks yet' : 'No tasks this month'}
               </p>
+              {filter !== 'all' ? (
+                <button
+                  onClick={() => setFilter('all')}
+                  className="pressable mt-3 px-4 py-2 rounded-xl text-sm font-medium"
+                  style={{ background: 'var(--accent)', color: 'white' }}
+                >
+                  Show all tasks
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowAdd(true)}
+                  className="pressable mt-3 px-4 py-2 rounded-xl text-sm font-medium"
+                  style={{ background: 'var(--accent)', color: 'white' }}
+                >
+                  Add your first task
+                </button>
+              )}
             </div>
           ) : (
             sortedTasks.map((task, i) => (
@@ -1528,7 +1564,13 @@ function App() {
                     onToggleAddSubtask={() => setAddingSubtaskTo(addingSubtaskTo === task.id ? null : task.id)}
                     searchQuery={searchQuery.trim() || ''}
                     celebrating={celebratingTask === task.id}
-                    onComplete={(id) => updateProgress(id, 100)}
+                    onComplete={(id) => {
+                      const prevTask = tasks.find(t => t.id === id);
+                      const prevProgress = prevTask ? prevTask.progress : 0;
+                      updateProgress(id, 100);
+                      setPendingComplete({ id, prevProgress });
+                      setToast({ message: 'Task completed', type: 'success', visible: true });
+                    }}
                     onSwipeDelete={(id) => setDeleteConfirm(id)}
                     onLongPressEdit={(id) => { const t = tasks.find(x => x.id === id); if (t) openEditModal(t); }}
                   />

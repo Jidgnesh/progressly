@@ -17,3 +17,5 @@ const PRIORITIES = {
   const TRASH_KEY = 'planner-trash-v1';
   const AUTH_KEY = 'planner-auth-v1';
   const USERS_KEY = 'planner-users-v1';
+  const THEME_KEY = 'planner-theme-v1';
+  const SWIPE_HINT_KEY = 'planner-swipe-hint-dismissed';

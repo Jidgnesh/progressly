@@ -1,38 +1,612 @@
-/* Base Reset */
+/* ============================================
+   THEME CUSTOM PROPERTIES
+   ============================================ */
+:root {
+  /* Easing curves */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Dark theme (default) */
+  --bg-base: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card-60: rgba(30, 41, 59, 0.6);
+  --bg-input: rgba(51, 65, 85, 0.5);
+  --bg-nav: rgba(15, 23, 42, 0.85);
+  --border-card: rgba(148, 163, 184, 0.08);
+  --border-elevated: rgba(148, 163, 184, 0.12);
+  --border-input: rgba(148, 163, 184, 0.1);
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --divider: #334155;
+
+  /* Typography */
+  --font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Shared tokens */
+  --accent: #7c3aed;
+  --accent-glow: rgba(124, 58, 237, 0.4);
+  --priority-high: #ef4444;
+  --priority-medium: #f59e0b;
+  --priority-low: #22c55e;
+}
+
+[data-theme="light"] {
+  --bg-base: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-60: rgba(255, 255, 255, 0.6);
+  --bg-input: #f1f5f9;
+  --bg-nav: rgba(248, 250, 252, 0.85);
+  --border-card: rgba(15, 23, 42, 0.06);
+  --border-elevated: rgba(15, 23, 42, 0.1);
+  --border-input: rgba(15, 23, 42, 0.08);
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --divider: #e2e8f0;
+}
+
+
+/* ============================================
+   BASE RESET
+   ============================================ */
 * {
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ============================================
+   FOCUS INDICATORS (a11y)
+   ============================================ */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+
+/* Typography rhythm */
+h1, h2, h3, .text-xl, .text-2xl, .text-3xl {
+  line-height: 1.2;
+}
+
+/* ============================================
+   THEME TRANSITION
+   ============================================ */
+.theme-transitioning * {
+  transition: background-color 300ms var(--ease-out),
+              color 300ms var(--ease-out),
+              border-color 300ms var(--ease-out) !important;
+}
+
+/* ============================================
+   GLOBAL PRESS FEEDBACK
+   ============================================ */
+.pressable {
+  transition: transform 160ms var(--ease-out);
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.pressable:active {
+  transform: scale(0.97);
+}
+
+.pressable-sm:active {
+  transform: scale(0.95);
+}
+
+.pressable-card {
+  transition: transform 160ms var(--ease-out);
+}
+
+.pressable-card:active {
+  transform: scale(0.98);
+}
+
+/* ============================================
+   HOVER GATE
+   ============================================ */
+@media (hover: hover) and (pointer: fine) {
+  .hoverable:hover {
+    opacity: 0.8;
   }
-  
-  body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #0f172a;
+  .hover-bg:hover {
+    background-color: var(--bg-input);
   }
-  
-  /* Range Input */
-  input[type="range"] {
-    -webkit-appearance: none;
-    background: #334155;
-    border-radius: 8px;
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
   }
-  
-  input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 20px;
-    height: 20px;
-    background: #8b5cf6;
-    border-radius: 50%;
-    cursor: pointer;
+  .stagger-item,
+  .page-content,
+  .empty-state-enter,
+  .search-enter,
+  .task-detail-enter {
+    opacity: 1 !important;
+    transform: none !important;
   }
-  
-  /* Number Input - Hide Spinners */
-  input[type="number"]::-webkit-inner-spin-button,
-  input[type="number"]::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
+  /* Keep opacity/color transitions for filter pills */
+  .filter-pill {
+    transition: none !important;
   }
-  
-  input[type="number"] {
-    -moz-appearance: textfield;
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+@media (hover: hover) and (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 6px;
   }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+  }
+}
+
+/* ============================================
+   ANIMATIONS — STAGGER & FADE
+   ============================================ */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger-item {
+  opacity: 0;
+  animation: fadeInUp 200ms var(--ease-out) forwards;
+}
+
+.page-enter {
+  animation: fadeInUp 200ms var(--ease-out) forwards;
+}
+
+.page-content {
+  animation: pageContentIn 250ms var(--ease-out) both;
+}
+
+@keyframes pageContentIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   ANIMATIONS — PROGRESS RING
+   ============================================ */
+.progress-ring-circle {
+  transition: stroke-dasharray 600ms var(--ease-out);
+}
+
+@keyframes ringPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.ring-pulse {
+  animation: ringPulse 300ms var(--ease-out);
+}
+
+/* ============================================
+   ANIMATIONS — CELEBRATION
+   ============================================ */
+@keyframes celebrationGlow {
+  0% { box-shadow: 0 0 16px rgba(34, 197, 94, 0.3); }
+  100% { box-shadow: 0 0 0px rgba(34, 197, 94, 0); }
+}
+
+.celebration-glow {
+  animation: celebrationGlow 600ms var(--ease-out) forwards;
+}
+
+/* ============================================
+   ANIMATIONS — TOAST
+   ============================================ */
+@keyframes toastEnter {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toastExit {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+
+.toast-enter {
+  animation: toastEnter 300ms var(--ease-out) forwards;
+}
+
+.toast-exit {
+  animation: toastExit 200ms var(--ease-out) forwards;
+}
+
+/* ============================================
+   ANIMATIONS — MODAL & DRAWER
+   ============================================ */
+.overlay-enter {
+  animation: fadeIn 200ms var(--ease-out) forwards;
+}
+
+.drawer-enter {
+  animation: drawerSlideUp 300ms var(--ease-drawer) forwards;
+}
+
+.drawer-exit {
+  animation: drawerSlideDown 200ms var(--ease-out) forwards;
+}
+
+@keyframes drawerSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes drawerSlideDown {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+
+.modal-enter {
+  animation: modalScaleIn 200ms var(--ease-out) forwards;
+}
+
+.modal-exit {
+  animation: modalScaleOut 150ms var(--ease-out) forwards;
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes modalScaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* Overlay exit */
+.overlay-exit {
+  animation: fadeOut 150ms var(--ease-out) forwards;
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* ============================================
+   ANIMATIONS — POPOVER
+   ============================================ */
+.popover-enter {
+  animation: popoverIn 150ms var(--ease-out) forwards;
+}
+
+@keyframes popoverIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ============================================
+   ANIMATIONS — NAV PILL
+   ============================================ */
+.nav-pill {
+  transition: left 200ms var(--ease-out), width 200ms var(--ease-out);
+}
+
+/* ============================================
+   ANIMATIONS — EXPAND/COLLAPSE
+   ============================================ */
+.expand-content {
+  overflow: hidden;
+  transition: max-height 250ms var(--ease-in-out), opacity 250ms var(--ease-in-out);
+}
+
+/* Task card detail expand/collapse */
+.task-detail-enter {
+  animation: taskDetailIn 200ms var(--ease-out) forwards;
+}
+
+@keyframes taskDetailIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   SWIPE GESTURE
+   ============================================ */
+.swipe-card {
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.swipe-card-content {
+  position: relative;
+  z-index: 1;
+  background: var(--bg-card);
+  transition: transform 0ms;
+}
+
+.swipe-card-content.releasing {
+  transition: transform 200ms var(--ease-out);
+}
+
+.swipe-bg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+}
+
+.swipe-bg-right {
+  left: 0;
+  right: 0;
+  justify-content: flex-start;
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.swipe-bg-left {
+  left: 0;
+  right: 0;
+  justify-content: flex-end;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* ============================================
+   HOLD TO DELETE
+   ============================================ */
+.hold-delete-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--priority-high);
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 200ms var(--ease-out);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.hold-delete-btn:active .hold-delete-overlay {
+  clip-path: inset(0 0 0 0);
+  transition: clip-path 2s linear;
+}
+
+/* ============================================
+   THEME TOGGLE ICON
+   ============================================ */
+.theme-icon {
+  transition: transform 200ms var(--ease-out);
+}
+
+.theme-icon-rotate {
+  transform: rotate(180deg);
+}
+
+/* ============================================
+   PRIORITY ACCENT BAR
+   ============================================ */
+.task-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.task-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--priority-color, var(--text-muted));
+}
+
+/* ============================================
+   FAB
+   ============================================ */
+.fab {
+  position: fixed;
+  bottom: 80px;
+  right: 16px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 4px 20px var(--accent-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+  border: none;
+  color: white;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out), box-shadow 200ms var(--ease-out);
+  animation: fabIn 300ms var(--ease-out) 200ms both;
+}
+
+.fab:active {
+  transform: scale(0.95);
+}
+
+@keyframes fabIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ============================================
+   ANIMATIONS — SEARCH INPUT
+   ============================================ */
+.search-enter {
+  animation: searchSlideIn 200ms var(--ease-out) forwards;
+}
+
+@keyframes searchSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   ANIMATIONS — EMPTY STATE
+   ============================================ */
+.empty-state-enter {
+  animation: emptyStateIn 400ms var(--ease-out) 100ms both;
+}
+
+@keyframes emptyStateIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   ANIMATIONS — FILTER PILLS
+   ============================================ */
+.filter-pill {
+  transition: background 180ms var(--ease-out), color 180ms var(--ease-out), border-color 180ms var(--ease-out);
+}
+
+/* ============================================
+   INPUT OVERRIDES
+   ============================================ */
+input[type="range"] {
+  -webkit-appearance: none;
+  background: var(--divider);
+  border-radius: 8px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Date input color fix for dark mode */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+}
+
+[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+}
+
+/* ============================================
+   TABULAR NUMBERS
+   ============================================ */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

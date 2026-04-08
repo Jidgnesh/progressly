@@ -1,4 +1,16 @@
 // ============================================
+// SECURITY HELPERS
+// ============================================
+
+const hashPassword = async (password) => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
+// ============================================
 // HELPER FUNCTIONS
 // ============================================
 
@@ -149,38 +161,6 @@ const getProgressColor = (p) => {
     return stats;
   };
   
-  // Get weekly progress (last 4 weeks)
-  const getWeeklyStats = (tasks) => {
-    const weeks = [];
-    const today = new Date();
-    for (let i = 3; i >= 0; i--) {
-      const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() - (i * 7 + today.getDay()));
-      weekStart.setHours(0, 0, 0, 0);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-      
-      // Get tasks created or completed in this week
-      const weekTasks = tasks.filter(t => {
-        const taskDate = new Date(t.id); // Using task ID as creation timestamp
-        return taskDate >= weekStart && taskDate <= weekEnd;
-      });
-      
-      const completed = weekTasks.filter(t => getTaskProgress(t) === 100).length;
-      const total = weekTasks.length;
-      const avgProgress = total > 0 ? Math.round(weekTasks.reduce((s, t) => s + getTaskProgress(t), 0) / total) : 0;
-      
-      weeks.push({
-        week: `Week ${4 - i}`,
-        date: weekStart,
-        total,
-        completed,
-        avgProgress
-      });
-    }
-    return weeks;
-  };
-  
   // Get monthly trends (last 6 months)
   const getMonthlyTrends = (tasks) => {
     const trends = [];
@@ -244,27 +224,51 @@ const getProgressColor = (p) => {
     return streak;
   };
   
-  // Get tasks completed per day (last 7 days)
-  const getDailyCompletion = (tasks) => {
-    const days = [];
-    const today = new Date();
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - i);
-      date.setHours(0, 0, 0, 0);
-      
-      // Count tasks that were completed on this day (using ID as proxy)
-      const dayTasks = tasks.filter(t => {
-        const taskDate = new Date(t.id);
-        taskDate.setHours(0, 0, 0, 0);
-        return taskDate.getTime() === date.getTime() && getTaskProgress(t) === 100;
-      });
-      
-      days.push({
-        day: date.toLocaleDateString('en-US', { weekday: 'short' }),
-        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        count: dayTasks.length
-      });
-    }
-    return days;
-  };
+// ============================================
+// THEME FUNCTIONS
+// ============================================
+
+const getSystemTheme = () => {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
+
+const applyTheme = (theme) => {
+  if (theme === 'dark') {
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+};
+
+const toggleTheme = (current) => {
+  return current === 'dark' ? 'light' : 'dark';
+};
+
+const initTheme = () => {
+  const stored = localStorage.getItem(THEME_KEY);
+  const theme = stored === 'dark' || stored === 'light' ? stored : getSystemTheme();
+  applyTheme(theme);
+  return theme;
+};
+
+// ============================================
+// GREETING FUNCTION
+// ============================================
+
+const getGreeting = (name) => {
+  const hour = new Date().getHours();
+  let timeGreeting;
+  if (hour < 12) timeGreeting = 'Good morning';
+  else if (hour < 18) timeGreeting = 'Good afternoon';
+  else timeGreeting = 'Good evening';
+  return name ? `${timeGreeting}, ${name}` : timeGreeting;
+};
+
+const getFormattedDate = () => {
+  return new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};

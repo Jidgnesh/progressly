@@ -1,4 +1,4 @@
-const CACHE_NAME = 'progressly-v4';
+const CACHE_NAME = 'progressly-v5';
 const ASSETS = [
   '/progressly/',
   '/progressly/index.html',

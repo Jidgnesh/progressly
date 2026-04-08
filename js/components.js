@@ -247,12 +247,18 @@ const StatsSummary = ({ totalCount, completedCount, streak, allTasks, expanded, 
 // ============================================
 const DeleteConfirmModal = ({ task, onCancel, onConfirm }) => {
   if (!task) return null;
+  const [exiting, setExiting] = React.useState(false);
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
 
+  const handleClose = (callback) => {
+    setExiting(true);
+    setTimeout(callback, 150);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overlay-enter"
-      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={onCancel}>
-      <div className="modal-enter rounded-2xl p-6 max-w-sm w-full"
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${exiting ? 'overlay-exit' : 'overlay-enter'}`}
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => handleClose(onCancel)}>
+      <div className={`${exiting ? 'modal-exit' : 'modal-enter'} rounded-2xl p-6 max-w-sm w-full`}
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border-elevated)', transformOrigin: 'center' }}
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4" style={{ background: 'rgba(239, 68, 68, 0.15)' }}>
@@ -268,8 +274,8 @@ const DeleteConfirmModal = ({ task, onCancel, onConfirm }) => {
         )}
         <p className="text-sm text-center mb-6" style={{ color: 'var(--text-muted)' }}>You can restore this task from the trash later.</p>
         <div className="flex gap-3">
-          <button onClick={onCancel} className="pressable flex-1 py-3 rounded-xl font-medium" style={{ background: 'var(--divider)', color: 'var(--text-primary)' }}>Cancel</button>
-          <button onClick={onConfirm} className="pressable flex-1 py-3 rounded-xl font-medium text-white" style={{ background: 'var(--priority-high)' }}>Delete</button>
+          <button onClick={() => handleClose(onCancel)} className="pressable flex-1 py-3 rounded-xl font-medium" style={{ background: 'var(--divider)', color: 'var(--text-primary)' }}>Cancel</button>
+          <button onClick={() => handleClose(onConfirm)} className="pressable flex-1 py-3 rounded-xl font-medium text-white" style={{ background: 'var(--priority-high)' }}>Delete</button>
         </div>
       </div>
     </div>
@@ -280,10 +286,17 @@ const DeleteConfirmModal = ({ task, onCancel, onConfirm }) => {
 // EDIT TASK MODAL
 // ============================================
 const EditTaskModal = ({ editForm, setEditForm, onSave, onCancel }) => {
+  const [exiting, setExiting] = React.useState(false);
+
+  const handleClose = (callback) => {
+    setExiting(true);
+    setTimeout(callback, 200);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end overlay-enter"
-      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={onCancel}>
-      <div className="drawer-enter w-full rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto"
+    <div className={`fixed inset-0 z-50 flex items-end ${exiting ? 'overlay-exit' : 'overlay-enter'}`}
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => handleClose(onCancel)}>
+      <div className={`${exiting ? 'drawer-exit' : 'drawer-enter'} w-full rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto`}
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border-elevated)' }}
         onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-center mb-4">
@@ -291,7 +304,7 @@ const EditTaskModal = ({ editForm, setEditForm, onSave, onCancel }) => {
         </div>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Edit Task</h2>
-          <button onClick={onCancel} className="pressable text-2xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
+          <button onClick={() => handleClose(onCancel)} className="pressable text-2xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
         </div>
         <input type="text" placeholder="Task name" value={editForm.title}
           onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
@@ -333,7 +346,7 @@ const EditTaskModal = ({ editForm, setEditForm, onSave, onCancel }) => {
               className="pressable mt-2 text-xs" style={{ color: 'var(--priority-high)' }}>Clear due date</button>
           )}
         </div>
-        <button onClick={onSave} disabled={!editForm.title.trim()}
+        <button onClick={() => handleClose(onSave)} disabled={!editForm.title.trim()}
           className="pressable w-full py-4 rounded-xl font-bold text-lg text-white disabled:opacity-40"
           style={{ background: 'var(--accent)' }}>Save Changes</button>
       </div>
@@ -345,10 +358,17 @@ const EditTaskModal = ({ editForm, setEditForm, onSave, onCancel }) => {
 // ADD TASK MODAL
 // ============================================
 const AddTaskModal = ({ newTask, setNewTask, onAdd, onCancel }) => {
+  const [exiting, setExiting] = React.useState(false);
+
+  const handleClose = (callback) => {
+    setExiting(true);
+    setTimeout(callback, 200);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end overlay-enter"
-      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={onCancel}>
-      <div className="drawer-enter w-full rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto"
+    <div className={`fixed inset-0 z-50 flex items-end ${exiting ? 'overlay-exit' : 'overlay-enter'}`}
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => handleClose(onCancel)}>
+      <div className={`${exiting ? 'drawer-exit' : 'drawer-enter'} w-full rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto`}
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border-elevated)' }}
         onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-center mb-4">
@@ -356,7 +376,7 @@ const AddTaskModal = ({ newTask, setNewTask, onAdd, onCancel }) => {
         </div>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Add Task</h2>
-          <button onClick={onCancel} className="pressable text-2xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
+          <button onClick={() => handleClose(onCancel)} className="pressable text-2xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
         </div>
         <input type="text" placeholder="What's your task?" value={newTask.title}
           onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
@@ -398,7 +418,7 @@ const AddTaskModal = ({ newTask, setNewTask, onAdd, onCancel }) => {
               className="pressable mt-2 text-xs" style={{ color: 'var(--priority-high)' }}>Clear due date</button>
           )}
         </div>
-        <button onClick={onAdd} disabled={!newTask.title.trim()}
+        <button onClick={() => handleClose(onAdd)} disabled={!newTask.title.trim()}
           className="pressable w-full py-4 rounded-xl font-bold text-lg text-white disabled:opacity-40"
           style={{ background: 'var(--accent)' }}>Add Task</button>
       </div>
@@ -530,7 +550,7 @@ const TaskItem = ({
       </div>
 
       {isExpanded && (
-        <div className="px-4 pb-4 pt-2" style={{ borderTop: '1px solid var(--border-card)' }}>
+        <div className="task-detail-enter px-4 pb-4 pt-2" style={{ borderTop: '1px solid var(--border-card)' }}>
           <div className="mb-4">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Subtasks</span>

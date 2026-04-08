@@ -132,9 +132,17 @@ body {
     animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
   }
-  .stagger-item {
+  .stagger-item,
+  .page-content,
+  .empty-state-enter,
+  .search-enter,
+  .task-detail-enter {
     opacity: 1 !important;
     transform: none !important;
+  }
+  /* Keep opacity/color transitions for filter pills */
+  .filter-pill {
+    transition: none !important;
   }
 }
 
@@ -194,6 +202,21 @@ body {
 
 .page-enter {
   animation: fadeInUp 200ms var(--ease-out) forwards;
+}
+
+.page-content {
+  animation: pageContentIn 250ms var(--ease-out) both;
+}
+
+@keyframes pageContentIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ============================================
@@ -287,6 +310,10 @@ body {
   animation: modalScaleIn 200ms var(--ease-out) forwards;
 }
 
+.modal-exit {
+  animation: modalScaleOut 150ms var(--ease-out) forwards;
+}
+
 @keyframes modalScaleIn {
   from {
     opacity: 0;
@@ -296,6 +323,27 @@ body {
     opacity: 1;
     transform: scale(1);
   }
+}
+
+@keyframes modalScaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* Overlay exit */
+.overlay-exit {
+  animation: fadeOut 150ms var(--ease-out) forwards;
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 /* ============================================
@@ -336,6 +384,22 @@ body {
 .expand-content {
   overflow: hidden;
   transition: max-height 250ms var(--ease-in-out), opacity 250ms var(--ease-in-out);
+}
+
+/* Task card detail expand/collapse */
+.task-detail-enter {
+  animation: taskDetailIn 200ms var(--ease-out) forwards;
+}
+
+@keyframes taskDetailIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ============================================
@@ -448,11 +512,66 @@ body {
   border: none;
   color: white;
   cursor: pointer;
-  transition: transform 160ms var(--ease-out);
+  transition: transform 160ms var(--ease-out), box-shadow 200ms var(--ease-out);
+  animation: fabIn 300ms var(--ease-out) 200ms both;
 }
 
 .fab:active {
   transform: scale(0.95);
+}
+
+@keyframes fabIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ============================================
+   ANIMATIONS — SEARCH INPUT
+   ============================================ */
+.search-enter {
+  animation: searchSlideIn 200ms var(--ease-out) forwards;
+}
+
+@keyframes searchSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   ANIMATIONS — EMPTY STATE
+   ============================================ */
+.empty-state-enter {
+  animation: emptyStateIn 400ms var(--ease-out) 100ms both;
+}
+
+@keyframes emptyStateIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   ANIMATIONS — FILTER PILLS
+   ============================================ */
+.filter-pill {
+  transition: background 180ms var(--ease-out), color 180ms var(--ease-out), border-color 180ms var(--ease-out);
 }
 
 /* ============================================

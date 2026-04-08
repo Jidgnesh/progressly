@@ -1189,7 +1189,7 @@ function App() {
     // ==================== TRASH PAGE ====================
     if (currentPage === 'trash') {
       return (
-        <div className="min-h-screen pb-24" style={{ background: 'var(--bg-base)' }}>
+        <div key="trash" className="page-content min-h-screen pb-24" style={{ background: 'var(--bg-base)' }}>
           <Toast message={toast.message} type={toast.type} visible={toast.visible} onDismiss={dismissToast} />
 
           <div className="px-4 pt-6 pb-4">
@@ -1224,7 +1224,7 @@ function App() {
 
           <div className="px-4">
             {trash.length === 0 ? (
-              <div className="text-center py-16">
+              <div className="empty-state-enter text-center py-16">
                 <Icon name="Trash2" size={64} className="mx-auto opacity-20" color="var(--text-muted)" />
                 <p className="mt-4 text-lg" style={{ color: 'var(--text-muted)' }}>Trash is empty</p>
                 <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Deleted tasks will appear here</p>
@@ -1246,7 +1246,7 @@ function App() {
     // ==================== HISTORY PAGE ====================
     if (currentPage === 'history') {
       return (
-        <div className="min-h-screen pb-24" style={{ background: 'var(--bg-base)' }}>
+        <div key="history" className="page-content min-h-screen pb-24" style={{ background: 'var(--bg-base)' }}>
           <Toast message={toast.message} type={toast.type} visible={toast.visible} onDismiss={dismissToast} />
 
           <div className="px-4 pt-6 pb-4">
@@ -1259,7 +1259,7 @@ function App() {
 
           <div className="px-4 space-y-6">
             {monthsWithTasks.length === 0 ? (
-              <div className="text-center py-16">
+              <div className="empty-state-enter text-center py-16">
                 <Icon name="History" size={64} className="mx-auto opacity-20" color="var(--text-muted)" />
                 <p className="mt-4 text-lg" style={{ color: 'var(--text-muted)' }}>No history yet</p>
               </div>
@@ -1318,7 +1318,7 @@ function App() {
 
     // ==================== HOME PAGE ====================
     return (
-      <div className="min-h-screen pb-24" style={{ background: 'var(--bg-base)' }}>
+      <div key="home" className="page-content min-h-screen pb-24" style={{ background: 'var(--bg-base)' }}>
         {/* Toast */}
         <Toast message={toast.message} type={toast.type} visible={toast.visible} onDismiss={dismissToast} />
 
@@ -1387,7 +1387,7 @@ function App() {
                 <button
                   key={f.id}
                   onClick={() => setFilter(f.id)}
-                  className="pressable px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap"
+                  className="pressable filter-pill px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap"
                   style={{
                     background: filter === f.id ? 'var(--accent)' : 'var(--bg-card)',
                     color: filter === f.id ? 'white' : 'var(--text-secondary)',
@@ -1423,7 +1423,7 @@ function App() {
               placeholder="Search tasks..."
               value={searchQuery.trim() ? searchQuery : ''}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full mt-2 rounded-xl px-4 py-2.5 text-sm outline-none"
+              className="search-enter w-full mt-2 rounded-xl px-4 py-2.5 text-sm outline-none"
               style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
               autoFocus
             />
@@ -1454,7 +1454,7 @@ function App() {
         {/* Task List */}
         <div className="px-4 space-y-3" onClick={closeAll}>
           {sortedTasks.length === 0 ? (
-            <div className="text-center py-16">
+            <div className="empty-state-enter text-center py-16">
               <Icon name="CheckCircle" size={64} className="mx-auto opacity-20" color="var(--text-muted)" />
               <p className="mt-4 text-lg" style={{ color: 'var(--text-muted)' }}>
                 {filter !== 'all' ? 'No tasks match this filter' : isCurrentMonth ? 'No tasks yet' : 'No tasks this month'}

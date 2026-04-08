@@ -128,16 +128,6 @@ const Toast = ({ message, type = 'success', visible, onDismiss, action }) => {
 };
 
 // ============================================
-// LOGO COMPONENT
-// ============================================
-const Logo = ({ size = 24 }) => (
-  <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-    <path d="M14 24 C14 18 8 18 8 24 C8 30 14 30 14 24 C14 18 24 18 24 24 C24 30 34 30 34 24 C34 18 40 18 40 24 C40 30 34 30 34 24" stroke="white" strokeWidth="4" strokeLinecap="round" strokeOpacity="0.3"/>
-    <path d="M14 24 C14 18 8 18 8 24 C8 30 14 30 14 24 C14 18 24 18 24 24" stroke="white" strokeWidth="4" strokeLinecap="round"/>
-  </svg>
-);
-
-// ============================================
 // PROGRESS CIRCLE COMPONENT
 // ============================================
 const ProgressCircle = ({ progress, size = 40, strokeWidth = 4, animate = false }) => {
@@ -176,47 +166,36 @@ const ProgressCircle = ({ progress, size = 40, strokeWidth = 4, animate = false 
 // STATS SUMMARY COMPONENT
 // ============================================
 const StatsSummary = ({ totalCount, completedCount, streak, allTasks, expanded, onToggle }) => {
-  const miniCards = [
-    { label: 'Tasks', value: totalCount },
-    { label: 'Done', value: completedCount },
-    { label: 'Streak', value: `${streak}d` },
-  ];
-
   return (
     <div>
-      <div className="grid grid-cols-3 gap-3">
-        {miniCards.map((card, i) => (
-          <div
-            key={card.label}
-            className="stagger-item rounded-2xl p-3 text-center"
-            style={{
-              animationDelay: `${i * 50}ms`,
-              background: 'var(--bg-card-60)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-              border: '1px solid var(--border-input)',
-            }}
-          >
-            <div className="text-lg font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>{card.value}</div>
-            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{card.label}</div>
-          </div>
-        ))}
-      </div>
-
       <button
         onClick={onToggle}
-        className="pressable flex items-center gap-2 mt-3 mx-auto text-xs font-medium"
+        className="pressable flex items-center gap-2 mx-auto text-xs font-medium"
         style={{ color: 'var(--text-muted)' }}
       >
+        <Icon name="BarChart3" size={14} />
         <span className="uppercase tracking-wider">Stats</span>
         <Icon name={expanded ? 'ChevronUp' : 'ChevronDown'} size={14} />
       </button>
 
-      <div
-        className="expand-content"
-        style={{ maxHeight: expanded ? '500px' : '0px', opacity: expanded ? 1 : 0 }}
-      >
-        <div className="pt-4 space-y-4">
+      <div className="expand-content" style={{ maxHeight: expanded ? '600px' : '0px', opacity: expanded ? 1 : 0 }}>
+        <div className="pt-3 space-y-4">
+          {/* Mini stats row */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Tasks', value: totalCount },
+              { label: 'Done', value: completedCount },
+              { label: 'Streak', value: `${streak}d` },
+            ].map((card) => (
+              <div key={card.label} className="rounded-2xl p-3 text-center"
+                style={{ background: 'var(--bg-card-60)', border: '1px solid var(--border-input)' }}>
+                <div className="text-lg font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>{card.value}</div>
+                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{card.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Category breakdown */}
           <div>
             <h4 className="text-xs font-medium uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>By Category</h4>
             <div className="space-y-2">
@@ -228,13 +207,15 @@ const StatsSummary = ({ totalCount, completedCount, streak, allTasks, expanded, 
                       <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--divider)' }}>
                         <div className="h-full rounded-full" style={{ width: `${stats.avgProgress}%`, background: getProgressColor(stats.avgProgress) }} />
                       </div>
-                      <span className="text-xs font-medium w-8 text-right" style={{ color: 'var(--text-muted)' }}>{stats.avgProgress}%</span>
+                      <span className="text-xs font-medium w-8 text-right tabular-nums" style={{ color: 'var(--text-muted)' }}>{stats.avgProgress}%</span>
                     </div>
                   </div>
                 )
               ))}
             </div>
           </div>
+
+          {/* Monthly trends */}
           <div>
             <h4 className="text-xs font-medium uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Monthly Trends</h4>
             <div className="flex items-end gap-1 h-16">

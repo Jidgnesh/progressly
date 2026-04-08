@@ -388,13 +388,6 @@ h1, h2, h3, .text-xl, .text-2xl, .text-3xl {
 }
 
 /* ============================================
-   ANIMATIONS — FILTER PILL INDICATOR
-   ============================================ */
-.filter-indicator {
-  transition: left 200ms var(--ease-out), width 200ms var(--ease-out);
-}
-
-/* ============================================
    ANIMATIONS — EXPAND/COLLAPSE
    ============================================ */
 .expand-content {

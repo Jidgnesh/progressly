@@ -128,6 +128,9 @@ function App() {
     const [themePreference, setThemePreference] = useState(() => initTheme());
     const [showStats, setShowStats] = useState(false);
 
+    // Help overlay state
+    const [showHelp, setShowHelp] = useState(false);
+
     // Quick-add state
     const [quickAddTitle, setQuickAddTitle] = useState('');
 
@@ -186,7 +189,7 @@ function App() {
         const tag = e.target.tagName.toLowerCase();
         if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
         if (!isAuthenticated || currentPage !== 'home') return;
-        if (showAdd || editingTask || deleteConfirm) return;
+        if (showAdd || editingTask || deleteConfirm || showHelp) return;
 
         switch (e.key) {
           case 'n':
@@ -217,12 +220,16 @@ function App() {
             e.preventDefault();
             setSearchQuery(searchQuery ? '' : ' ');
             break;
+          case '?':
+            e.preventDefault();
+            setShowHelp(true);
+            break;
         }
       };
 
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isAuthenticated, currentPage, showAdd, editingTask, deleteConfirm, searchQuery]);
+    }, [isAuthenticated, currentPage, showAdd, editingTask, deleteConfirm, showHelp, searchQuery]);
 
     // Auto-complete email with @gmail.com if no @ present
     const completeEmail = (email) => {
@@ -660,23 +667,29 @@ function App() {
     // ==================== STORAGE FUNCTIONS ====================
     const saveTasks = async (newTasks) => {
       setTasks(newTasks);
-
       if (useFirebase && currentUser && isFirebaseAvailable()) {
         setSyncing(true);
-        await FirebaseService.saveTasks(currentUser.uid, newTasks);
+        const result = await FirebaseService.saveTasks(currentUser.uid, newTasks);
         setSyncing(false);
+        if (!result.success) {
+          showToast('Failed to sync — changes saved locally', 'error');
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(newTasks));
+        }
       } else {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newTasks));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newTasks));
       }
     };
 
     const saveTrash = async (newTrash) => {
       setTrash(newTrash);
-
       if (useFirebase && currentUser && isFirebaseAvailable()) {
-        await FirebaseService.saveTrash(currentUser.uid, newTrash);
+        const result = await FirebaseService.saveTrash(currentUser.uid, newTrash);
+        if (!result.success) {
+          showToast('Failed to sync trash — changes saved locally', 'error');
+          localStorage.setItem(TRASH_KEY, JSON.stringify(newTrash));
+        }
       } else {
-      localStorage.setItem(TRASH_KEY, JSON.stringify(newTrash));
+        localStorage.setItem(TRASH_KEY, JSON.stringify(newTrash));
       }
     };
 
@@ -1388,8 +1401,12 @@ function App() {
                     <div className="space-y-2">
                       {monthData.tasks.map((task, ti) => (
                         <div key={task.id} className="stagger-item" style={{ animationDelay: `${gi * 80 + ti * 40}ms` }}>
-                          <TaskItem
+                          <SwipeableTaskItem
                             task={task}
+                            onComplete={(id) => updateProgress(id, 100)}
+                            onSwipeDelete={(id) => setDeleteConfirm(id)}
+                            onLongPressEdit={(id) => { const t = tasks.find(x => x.id === id); if (t) openEditModal(t); }}
+                            celebrating={celebratingTask === task.id}
                             isExpanded={expandedTask === task.id}
                             expandedSubtask={expandedSubtask}
                             addingSubtaskTo={addingSubtaskTo}
@@ -1474,30 +1491,16 @@ function App() {
           </button>
         </div>
 
-        {/* Stats — collapsed by default */}
+        {/* Stats */}
         <div className="px-4 mb-3">
-          <button
-            onClick={() => setShowStats(!showStats)}
-            className="pressable flex items-center gap-2 mx-auto text-xs font-medium"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            <Icon name="BarChart3" size={14} />
-            <span className="uppercase tracking-wider">Stats</span>
-            <Icon name={showStats ? 'ChevronUp' : 'ChevronDown'} size={14} />
-          </button>
-
-          <div className="expand-content" style={{ maxHeight: showStats ? '600px' : '0px', opacity: showStats ? 1 : 0 }}>
-            <div className="pt-3">
-              <StatsSummary
-                totalCount={totalCount}
-                completedCount={completedCount}
-                streak={getCompletionStreak(tasks)}
-                allTasks={monthTasks}
-                expanded={showStats}
-                onToggle={() => setShowStats(!showStats)}
-              />
-            </div>
-          </div>
+          <StatsSummary
+            totalCount={totalCount}
+            completedCount={completedCount}
+            streak={getCompletionStreak(tasks)}
+            allTasks={monthTasks}
+            expanded={showStats}
+            onToggle={() => setShowStats(!showStats)}
+          />
         </div>
 
         {/* Filter Bar */}
@@ -1705,6 +1708,42 @@ function App() {
         {showAdd && <AddTaskModal newTask={newTask} setNewTask={setNewTask} onAdd={addTask} onCancel={() => setShowAdd(false)} />}
         {editingTask && <EditTaskModal editForm={editForm} setEditForm={setEditForm} onSave={saveEdit} onCancel={() => setEditingTask(null)} />}
         {deleteConfirm && <DeleteConfirmModal task={taskToDelete} onCancel={() => setDeleteConfirm(null)} onConfirm={() => moveToTrash(deleteConfirm)} />}
+
+        {/* Keyboard Shortcut Help Overlay */}
+        {showHelp && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overlay-enter"
+            style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+            onClick={() => setShowHelp(false)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setShowHelp(false); }}>
+            <div className="modal-enter rounded-2xl p-5 w-full max-w-xs"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border-elevated)' }}
+              onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Shortcuts</h3>
+                <button onClick={() => setShowHelp(false)} className="pressable p-1" style={{ color: 'var(--text-muted)' }}>
+                  <Icon name="X" size={16} />
+                </button>
+              </div>
+              <div className="space-y-2">
+                {[
+                  ['n', 'New task'],
+                  ['/', 'Search'],
+                  ['\u2190 \u2192', 'Change month'],
+                  ['1-4', 'Filter tasks'],
+                  ['?', 'This help'],
+                ].map(([key, desc]) => (
+                  <div key={key} className="flex items-center justify-between">
+                    <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{desc}</span>
+                    <kbd className="text-xs px-2 py-0.5 rounded font-mono"
+                      style={{ background: 'var(--bg-input)', color: 'var(--text-muted)', border: '1px solid var(--border-card)' }}>
+                      {key}
+                    </kbd>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Bottom Nav */}
         <BottomNav currentPage={currentPage} setCurrentPage={setCurrentPage} trashCount={trash.length} />

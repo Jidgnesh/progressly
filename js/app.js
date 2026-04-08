@@ -127,6 +127,14 @@ function App() {
     const [themePreference, setThemePreference] = useState(() => initTheme());
     const [showStats, setShowStats] = useState(false);
 
+    // Swipe hint state
+    const [showSwipeHint, setShowSwipeHint] = useState(() => !localStorage.getItem(SWIPE_HINT_KEY));
+
+    const dismissSwipeHint = () => {
+      setShowSwipeHint(false);
+      localStorage.setItem(SWIPE_HINT_KEY, 'true');
+    };
+
     // Celebration state
     const [celebratingTask, setCelebratingTask] = useState(null);
 
@@ -1364,39 +1372,48 @@ function App() {
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{getFormattedDate()}</p>
         </div>
 
-        {/* Month Navigation */}
-        <div className="flex items-center justify-center gap-4 px-4 mb-4">
+        {/* Month Navigation — with inline progress */}
+        <div className="flex items-center justify-center gap-3 px-4 mb-3">
           <button onClick={() => changeMonth(-1)} className="pressable-sm p-2" style={{ color: 'var(--text-secondary)' }}>
             <Icon name="ChevronLeft" size={20} />
           </button>
-          <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
-            {MONTHS_FULL[currentMonth]} {currentYear}
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+              {MONTHS_FULL[currentMonth]} {currentYear}
+            </h2>
+            <span className="text-sm font-bold" style={{ color: getProgressColor(avgProgress) }}>
+              {avgProgress}%
+            </span>
+          </div>
           <button onClick={() => changeMonth(1)} className="pressable-sm p-2" style={{ color: 'var(--text-secondary)' }}>
             <Icon name="ChevronRight" size={20} />
           </button>
         </div>
 
-        {/* Progress Ring */}
-        <div className="flex justify-center mb-4">
-          <div className="relative">
-            <ProgressCircle progress={avgProgress} size={80} strokeWidth={6} animate={true} />
-            <span className="absolute inset-0 flex items-center justify-center text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
-              {avgProgress}%
-            </span>
-          </div>
-        </div>
+        {/* Stats — collapsed by default */}
+        <div className="px-4 mb-3">
+          <button
+            onClick={() => setShowStats(!showStats)}
+            className="pressable flex items-center gap-2 mx-auto text-xs font-medium"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            <Icon name="BarChart3" size={14} />
+            <span className="uppercase tracking-wider">Stats</span>
+            <Icon name={showStats ? 'ChevronUp' : 'ChevronDown'} size={14} />
+          </button>
 
-        {/* Stats Summary */}
-        <div className="px-4 mb-6">
-          <StatsSummary
-            totalCount={totalCount}
-            completedCount={completedCount}
-            streak={getCompletionStreak(tasks)}
-            allTasks={monthTasks}
-            expanded={showStats}
-            onToggle={() => setShowStats(!showStats)}
-          />
+          <div className="expand-content" style={{ maxHeight: showStats ? '600px' : '0px', opacity: showStats ? 1 : 0 }}>
+            <div className="pt-3">
+              <StatsSummary
+                totalCount={totalCount}
+                completedCount={completedCount}
+                streak={getCompletionStreak(tasks)}
+                allTasks={monthTasks}
+                expanded={showStats}
+                onToggle={() => setShowStats(!showStats)}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Filter Bar */}
@@ -1491,30 +1508,51 @@ function App() {
             </div>
           ) : (
             sortedTasks.map((task, i) => (
-              <div key={task.id} className="stagger-item" style={{ animationDelay: `${i * 40}ms` }}>
-                <SwipeableTaskItem
-                  task={task}
-                  isExpanded={expandedTask === task.id}
-                  expandedSubtask={expandedSubtask}
-                  addingSubtaskTo={addingSubtaskTo}
-                  newSubtask={newSubtask}
-                  setNewSubtask={setNewSubtask}
-                  onToggleExpand={() => { setExpandedTask(expandedTask === task.id ? null : task.id); setExpandedSubtask(null); }}
-                  onToggleSubtask={(stId) => setExpandedSubtask(expandedSubtask === stId ? null : stId)}
-                  onEdit={() => openEditModal(task)}
-                  onDelete={() => setDeleteConfirm(task.id)}
-                  onUpdateProgress={(p) => updateProgress(task.id, p)}
-                  onAddSubtask={() => addSubtask(task.id)}
-                  onDeleteSubtask={(stId) => deleteSubtask(task.id, stId)}
-                  onUpdateSubtaskProgress={(stId, p) => updateSubtaskProgress(task.id, stId, p)}
-                  onToggleAddSubtask={() => setAddingSubtaskTo(addingSubtaskTo === task.id ? null : task.id)}
-                  searchQuery={searchQuery.trim() || ''}
-                  celebrating={celebratingTask === task.id}
-                  onComplete={(id) => updateProgress(id, 100)}
-                  onSwipeDelete={(id) => setDeleteConfirm(id)}
-                  onLongPressEdit={(id) => { const t = tasks.find(x => x.id === id); if (t) openEditModal(t); }}
-                />
-              </div>
+              <React.Fragment key={task.id}>
+                <div className="stagger-item" style={{ animationDelay: `${i * 40}ms` }}>
+                  <SwipeableTaskItem
+                    task={task}
+                    isExpanded={expandedTask === task.id}
+                    expandedSubtask={expandedSubtask}
+                    addingSubtaskTo={addingSubtaskTo}
+                    newSubtask={newSubtask}
+                    setNewSubtask={setNewSubtask}
+                    onToggleExpand={() => { setExpandedTask(expandedTask === task.id ? null : task.id); setExpandedSubtask(null); }}
+                    onToggleSubtask={(stId) => setExpandedSubtask(expandedSubtask === stId ? null : stId)}
+                    onEdit={() => openEditModal(task)}
+                    onDelete={() => setDeleteConfirm(task.id)}
+                    onUpdateProgress={(p) => updateProgress(task.id, p)}
+                    onAddSubtask={() => addSubtask(task.id)}
+                    onDeleteSubtask={(stId) => deleteSubtask(task.id, stId)}
+                    onUpdateSubtaskProgress={(stId, p) => updateSubtaskProgress(task.id, stId, p)}
+                    onToggleAddSubtask={() => setAddingSubtaskTo(addingSubtaskTo === task.id ? null : task.id)}
+                    searchQuery={searchQuery.trim() || ''}
+                    celebrating={celebratingTask === task.id}
+                    onComplete={(id) => updateProgress(id, 100)}
+                    onSwipeDelete={(id) => setDeleteConfirm(id)}
+                    onLongPressEdit={(id) => { const t = tasks.find(x => x.id === id); if (t) openEditModal(t); }}
+                  />
+                </div>
+                {i === 0 && showSwipeHint && (
+                  <div className="flex items-center justify-between px-3 py-2 rounded-xl text-xs stagger-item"
+                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)', animationDelay: '200ms' }}>
+                    <div className="flex items-center gap-4" style={{ color: 'var(--text-muted)' }}>
+                      <span className="flex items-center gap-1">
+                        <Icon name="ArrowRight" size={12} /> Complete
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Icon name="ArrowLeft" size={12} /> Delete
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Icon name="Grip" size={12} /> Hold to edit
+                      </span>
+                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); dismissSwipeHint(); }} className="pressable p-1" style={{ color: 'var(--text-muted)' }}>
+                      <Icon name="X" size={14} />
+                    </button>
+                  </div>
+                )}
+              </React.Fragment>
             ))
           )}
         </div>

@@ -26,7 +26,7 @@ import {
   enableNetwork,
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import type { AppUser, AuthResult, Task, TrashTask } from '@/types';
+import type { AuthResult, Task, TrashTask } from '@/types';
 
 // ==================== HELPERS ====================
 

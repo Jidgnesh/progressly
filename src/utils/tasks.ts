@@ -83,7 +83,7 @@ export const getMonthlyTrends = (tasks: Task[]): MonthlyTrend[] => {
     const avgProgress = total > 0 ? Math.round(monthTasks.reduce((s, t) => s + getTaskProgress(t), 0) / total) : 0;
 
     trends.push({
-      month: MONTHS[month],
+      month: MONTHS[month] ?? '',
       monthNum: month,
       year,
       total,

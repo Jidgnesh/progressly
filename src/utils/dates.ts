@@ -59,7 +59,7 @@ export const isDueThisWeek = (dateString: string | null): boolean => {
 export const getDateInputValue = (dateString: string | null): string => {
   if (!dateString) return '';
   const date = new Date(dateString);
-  return date.toISOString().split('T')[0];
+  return date.toISOString().split('T')[0] ?? '';
 };
 
 /** Format deleted time for trash items */

@@ -93,7 +93,7 @@ const AddTaskModal = ({ newTask, setNewTask, onAdd, onCancel }: AddTaskModalProp
               onClick={() => {
                 const picker = document.getElementById('add-date-picker') as HTMLInputElement | null;
                 if (picker) {
-                  if ('showPicker' in picker) picker.showPicker();
+                  if (typeof picker.showPicker === 'function') picker.showPicker();
                   else picker.click();
                 }
               }}

@@ -92,7 +92,7 @@ const EditTaskModal = ({ editForm, setEditForm, onSave, onCancel }: EditTaskModa
               onClick={() => {
                 const picker = document.getElementById('edit-date-picker') as HTMLInputElement | null;
                 if (picker) {
-                  if ('showPicker' in picker) picker.showPicker();
+                  if (typeof picker.showPicker === 'function') picker.showPicker();
                   else picker.click();
                 }
               }}

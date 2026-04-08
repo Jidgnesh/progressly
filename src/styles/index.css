@@ -493,10 +493,7 @@ h1, h2, h3, .text-xl, .text-2xl, .text-3xl {
 /* ============================================
    FAB
    ============================================ */
-/* Page content offset for side nav */
-.page-with-nav {
-  padding-left: 72px;
-}
+/* Page content offset for side nav — dynamic width set by SideNav component */
 
 @keyframes fabIn {
   from {

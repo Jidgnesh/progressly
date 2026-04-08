@@ -11,115 +11,37 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check file structure
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc -b
+
+      - name: Build
+        run: npm run build
+
+      - name: Validate manifest
+        run: python3 -m json.tool public/manifest.json > /dev/null
+
+      - name: Check build output
         run: |
-          echo "🔍 Validating project structure..."
-          
-          # Check required files
-          required_files=(
-            "index.html"
-            "js/app.js"
-            "js/components.js"
-            "js/constants.js"
-            "js/utils.js"
-            "styles.css"
-            "manifest.json"
-            "sw.js"
-          )
-          
-          missing_files=()
-          for file in "${required_files[@]}"; do
-            if [ ! -f "$file" ]; then
-              missing_files+=("$file")
-            fi
-          done
-          
-          if [ ${#missing_files[@]} -gt 0 ]; then
-            echo "❌ Missing required files:"
-            printf '  - %s\n' "${missing_files[@]}"
+          if [ ! -d "dist" ]; then
+            echo "Build output missing"
             exit 1
           fi
-          
-          echo "✅ All required files present"
-
-      - name: Validate HTML
-        run: |
-          echo "🔍 Validating HTML..."
-          
-          # Check if index.html has required elements
-          if ! grep -q '<div id="root"></div>' index.html; then
-            echo "❌ Missing root div in index.html"
+          if [ ! -f "dist/index.html" ]; then
+            echo "dist/index.html missing"
             exit 1
           fi
-          
-          if ! grep -q 'js/app.js' index.html; then
-            echo "❌ Missing app.js script in index.html"
-            exit 1
-          fi
-          
-          echo "✅ HTML structure valid"
-
-      - name: Check JavaScript syntax
-        run: |
-          echo "🔍 Checking JavaScript files..."
-          
-          # Check if files are readable and not empty
-          js_files=("js/app.js" "js/components.js" "js/constants.js" "js/utils.js")
-          
-          for file in "${js_files[@]}"; do
-            if [ ! -s "$file" ]; then
-              echo "❌ $file is empty or missing"
-              exit 1
-            fi
-            
-            # Basic syntax check - look for common errors
-            if grep -q '<<<<<<< HEAD' "$file" || grep -q '>>>>>>>' "$file"; then
-              echo "❌ Merge conflicts found in $file"
-              exit 1
-            fi
-          done
-          
-          echo "✅ JavaScript files valid"
-
-      - name: Validate manifest.json
-        run: |
-          echo "🔍 Validating manifest.json..."
-          
-          if ! command -v python3 &> /dev/null; then
-            echo "⚠️ Python3 not available, skipping JSON validation"
-          else
-            python3 -m json.tool manifest.json > /dev/null
-            if [ $? -ne 0 ]; then
-              echo "❌ manifest.json is not valid JSON"
-              exit 1
-            fi
-            echo "✅ manifest.json is valid JSON"
-          fi
-
-      - name: Check for console errors
-        run: |
-          echo "🔍 Checking for common issues..."
-          
-          # Check for undefined variables or common issues
-          if grep -r "undefined" js/*.js 2>/dev/null | grep -v "//" | grep -v "undefined" | head -5; then
-            echo "⚠️ Found potential undefined references (review manually)"
-          fi
-          
-          echo "✅ Basic checks completed"
-
-      - name: Summary
-        run: |
-          echo "## ✅ Validation Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "All checks passed successfully!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Files Checked:" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ HTML structure" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ JavaScript files" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Manifest file" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Project structure" >> $GITHUB_STEP_SUMMARY
+          echo "Build output valid"

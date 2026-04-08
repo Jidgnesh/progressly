@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ============================================
    THEME CUSTOM PROPERTIES
    ============================================ */
@@ -368,7 +372,7 @@ h1, h2, h3, .text-xl, .text-2xl, .text-3xl {
    ANIMATIONS — NAV PILL
    ============================================ */
 .nav-pill {
-  transition: left 200ms var(--ease-out), width 200ms var(--ease-out);
+  transition: top 200ms var(--ease-out), left 200ms var(--ease-out), width 200ms var(--ease-out);
 }
 
 /* ============================================
@@ -489,29 +493,7 @@ h1, h2, h3, .text-xl, .text-2xl, .text-3xl {
 /* ============================================
    FAB
    ============================================ */
-.fab {
-  position: fixed;
-  bottom: 80px;
-  right: 16px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 4px 20px var(--accent-glow);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 40;
-  border: none;
-  color: white;
-  cursor: pointer;
-  transition: transform 160ms var(--ease-out), box-shadow 200ms var(--ease-out);
-  animation: fabIn 300ms var(--ease-out) 200ms both;
-}
-
-.fab:active {
-  transform: scale(0.95);
-}
+/* Page content offset for side nav — dynamic width set by SideNav component */
 
 @keyframes fabIn {
   from {

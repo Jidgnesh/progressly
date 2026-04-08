@@ -495,8 +495,8 @@ h1, h2, h3, .text-xl, .text-2xl, .text-3xl {
    ============================================ */
 .fab {
   position: fixed;
-  bottom: 80px;
-  right: 16px;
+  bottom: 90px;
+  left: 16px;
   width: 56px;
   height: 56px;
   border-radius: 50%;

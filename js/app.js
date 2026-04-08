@@ -1586,27 +1586,25 @@ function App() {
 
         {/* Quick Add */}
         <div className="px-4 mb-3">
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
+            <Icon name="Plus" size={16} color="var(--text-muted)" />
             <input
               type="text"
-              placeholder="Add a task... (n for details)"
+              placeholder="Add a task..."
               value={quickAddTitle}
               onChange={(e) => setQuickAddTitle(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') quickAddTask();
                 if (e.key === 'Escape') { setQuickAddTitle(''); e.target.blur(); }
               }}
-              className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
-              style={{
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border-card)',
-                color: 'var(--text-primary)',
-              }}
+              className="flex-1 text-sm outline-none"
+              style={{ background: 'transparent', color: 'var(--text-primary)' }}
             />
             {quickAddTitle.trim() && (
               <button
                 onClick={quickAddTask}
-                className="pressable px-4 rounded-xl text-sm font-medium text-white"
+                className="pressable px-3 py-1 rounded-lg text-xs font-medium text-white"
                 style={{ background: 'var(--accent)' }}
               >
                 Add

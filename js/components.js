@@ -305,64 +305,103 @@ const EditTaskModal = ({ editForm, setEditForm, onSave, onCancel }) => {
     setTimeout(callback, 200);
   };
 
+  const handleSubmit = (e) => {
+    e && e.preventDefault();
+    if (editForm.title.trim()) handleClose(onSave);
+  };
+
   return (
     <div className={`fixed inset-0 z-50 flex items-end ${exiting ? 'overlay-exit' : 'overlay-enter'}`}
       style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => handleClose(onCancel)}
       onKeyDown={(e) => { if (e.key === 'Escape') handleClose(onCancel); }}>
-      <div className={`${exiting ? 'drawer-exit' : 'drawer-enter'} w-full rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto`}
+      <div className={`${exiting ? 'drawer-exit' : 'drawer-enter'} w-full rounded-t-3xl max-h-[85vh] overflow-y-auto`}
         role="dialog" aria-modal="true" aria-labelledby="edit-modal-title"
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border-elevated)' }}
         onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-center mb-4">
-          <div className="w-10 h-1 rounded-full" style={{ background: 'var(--text-muted)' }} />
+
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full" style={{ background: 'var(--text-muted)', opacity: 0.4 }} />
         </div>
-        <div className="flex justify-between items-center mb-6">
-          <h2 id="edit-modal-title" className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Edit Task</h2>
-          <button onClick={() => handleClose(onCancel)} className="pressable text-2xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
-        </div>
-        <input type="text" placeholder="Task name" value={editForm.title}
-          onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-          className="w-full rounded-xl px-4 py-4 mb-4 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 text-lg"
-          style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }} autoFocus />
-        <div className="mb-4">
-          <label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>Category</label>
-          <div className="flex flex-wrap gap-2">
+
+        <div className="px-5 pb-5">
+          {/* Title input — hero element, no border */}
+          <input type="text" placeholder="Task name"
+            value={editForm.title}
+            onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+            onKeyDown={(e) => { if (e.key === 'Enter' && editForm.title.trim()) handleSubmit(); }}
+            className="w-full py-4 outline-none text-xl font-medium"
+            style={{ background: 'transparent', color: 'var(--text-primary)', caretColor: 'var(--accent)' }}
+            autoFocus />
+
+          {/* Compact options row */}
+          <div className="flex items-center gap-2 flex-wrap mb-5" style={{ borderTop: '1px solid var(--border-card)', paddingTop: 12 }}>
+            {/* Category chips */}
             {CATEGORIES.map(c => (
               <button key={c} onClick={() => setEditForm({ ...editForm, category: c })}
-                className="pressable px-4 py-2 rounded-xl text-sm font-medium"
-                style={{ background: editForm.category === c ? 'var(--accent)' : 'var(--divider)', color: editForm.category === c ? 'white' : 'var(--text-secondary)' }}>
+                className="pressable px-3 py-1 rounded-full text-xs font-medium"
+                style={{
+                  background: editForm.category === c ? 'var(--accent)' : 'transparent',
+                  color: editForm.category === c ? 'white' : 'var(--text-muted)',
+                  border: editForm.category === c ? '1px solid transparent' : '1px solid var(--border-card)',
+                }}>
                 {c}
               </button>
             ))}
-          </div>
-        </div>
-        <div className="mb-4">
-          <label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>Priority</label>
-          <div className="flex gap-2">
+
+            <span className="w-1 h-1 rounded-full" style={{ background: 'var(--text-muted)', opacity: 0.3 }} />
+
+            {/* Priority — compact colored dots */}
             {Object.entries(PRIORITIES).map(([k, c]) => (
               <button key={k} onClick={() => setEditForm({ ...editForm, priority: k })}
-                className="pressable flex-1 py-3 rounded-xl capitalize font-medium"
-                style={{ backgroundColor: c + '33', color: c, ...(editForm.priority === k ? { boxShadow: `0 0 0 2px ${c}` } : { opacity: 0.5 }) }}>
+                className="pressable flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium capitalize"
+                style={{
+                  background: editForm.priority === k ? c + '20' : 'transparent',
+                  color: editForm.priority === k ? c : 'var(--text-muted)',
+                  border: editForm.priority === k ? `1px solid ${c}40` : '1px solid transparent',
+                }}>
+                <span className="w-2 h-2 rounded-full" style={{ background: c, opacity: editForm.priority === k ? 1 : 0.4 }} />
                 {k}
               </button>
             ))}
           </div>
+
+          {/* Due date — inline */}
+          <div className="flex items-center gap-3 mb-5">
+            <button
+              onClick={() => {
+                const picker = document.getElementById('edit-date-picker');
+                if (picker) picker.showPicker ? picker.showPicker() : picker.click();
+              }}
+              className="pressable flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
+              style={{
+                background: editForm.dueDate ? 'rgba(96, 165, 250, 0.1)' : 'transparent',
+                color: editForm.dueDate ? '#60a5fa' : 'var(--text-muted)',
+                border: editForm.dueDate ? '1px solid rgba(96, 165, 250, 0.2)' : '1px solid var(--border-card)',
+              }}>
+              <Icon name="Calendar" size={14} />
+              {editForm.dueDate ? formatDate(editForm.dueDate) : 'Add date'}
+            </button>
+            <input id="edit-date-picker" type="date"
+              value={getDateInputValue(editForm.dueDate)}
+              onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value || '' })}
+              min={new Date().toISOString().split('T')[0]}
+              className="sr-only" tabIndex={-1} />
+            {editForm.dueDate && (
+              <button onClick={() => setEditForm({ ...editForm, dueDate: '' })}
+                className="pressable p-1 rounded-full" style={{ color: 'var(--text-muted)' }}>
+                <Icon name="X" size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Submit */}
+          <button onClick={handleSubmit} disabled={!editForm.title.trim()}
+            className="pressable w-full py-3 rounded-xl font-semibold text-sm text-white disabled:opacity-30"
+            style={{ background: 'var(--accent)' }}>
+            Save Changes
+          </button>
         </div>
-        <div className="mb-6">
-          <label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>Due Date (Optional)</label>
-          <input type="date" value={getDateInputValue(editForm.dueDate)}
-            onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value || '' })}
-            className="w-full rounded-xl px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
-            style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
-            min={new Date().toISOString().split('T')[0]} />
-          {editForm.dueDate && (
-            <button onClick={() => setEditForm({ ...editForm, dueDate: '' })}
-              className="pressable mt-2 text-xs" style={{ color: 'var(--priority-high)' }}>Clear due date</button>
-          )}
-        </div>
-        <button onClick={() => handleClose(onSave)} disabled={!editForm.title.trim()}
-          className="pressable w-full py-4 rounded-xl font-bold text-lg text-white disabled:opacity-40"
-          style={{ background: 'var(--accent)' }}>Save Changes</button>
       </div>
     </div>
   );
@@ -379,64 +418,104 @@ const AddTaskModal = ({ newTask, setNewTask, onAdd, onCancel }) => {
     setTimeout(callback, 200);
   };
 
+  const handleSubmit = (e) => {
+    e && e.preventDefault();
+    if (newTask.title.trim()) handleClose(onAdd);
+  };
+
   return (
     <div className={`fixed inset-0 z-50 flex items-end ${exiting ? 'overlay-exit' : 'overlay-enter'}`}
       style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => handleClose(onCancel)}
       onKeyDown={(e) => { if (e.key === 'Escape') handleClose(onCancel); }}>
-      <div className={`${exiting ? 'drawer-exit' : 'drawer-enter'} w-full rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto`}
+      <div className={`${exiting ? 'drawer-exit' : 'drawer-enter'} w-full rounded-t-3xl max-h-[85vh] overflow-y-auto`}
         role="dialog" aria-modal="true" aria-labelledby="add-modal-title"
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border-elevated)' }}
         onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-center mb-4">
-          <div className="w-10 h-1 rounded-full" style={{ background: 'var(--text-muted)' }} />
+
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full" style={{ background: 'var(--text-muted)', opacity: 0.4 }} />
         </div>
-        <div className="flex justify-between items-center mb-6">
-          <h2 id="add-modal-title" className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Add Task</h2>
-          <button onClick={() => handleClose(onCancel)} className="pressable text-2xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
-        </div>
-        <input type="text" placeholder="What's your task?" value={newTask.title}
-          onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-          className="w-full rounded-xl px-4 py-4 mb-4 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 text-lg"
-          style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }} autoFocus />
-        <div className="mb-4">
-          <label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>Category</label>
-          <div className="flex flex-wrap gap-2">
+
+        <div className="px-5 pb-5">
+          {/* Title input — hero element, no border, large */}
+          <input type="text" placeholder="What's your task?"
+            value={newTask.title}
+            onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+            onKeyDown={(e) => { if (e.key === 'Enter' && newTask.title.trim()) handleSubmit(); }}
+            className="w-full py-4 outline-none text-xl font-medium"
+            style={{ background: 'transparent', color: 'var(--text-primary)', caretColor: 'var(--accent)' }}
+            autoFocus />
+
+          {/* Compact options row */}
+          <div className="flex items-center gap-2 flex-wrap mb-5" style={{ borderTop: '1px solid var(--border-card)', paddingTop: 12 }}>
+            {/* Category chips — smaller, pill-shaped */}
             {CATEGORIES.map(c => (
               <button key={c} onClick={() => setNewTask({ ...newTask, category: c })}
-                className="pressable px-4 py-2 rounded-xl text-sm font-medium"
-                style={{ background: newTask.category === c ? 'var(--accent)' : 'var(--divider)', color: newTask.category === c ? 'white' : 'var(--text-secondary)' }}>
+                className="pressable px-3 py-1 rounded-full text-xs font-medium"
+                style={{
+                  background: newTask.category === c ? 'var(--accent)' : 'transparent',
+                  color: newTask.category === c ? 'white' : 'var(--text-muted)',
+                  border: newTask.category === c ? '1px solid transparent' : '1px solid var(--border-card)',
+                }}>
                 {c}
               </button>
             ))}
-          </div>
-        </div>
-        <div className="mb-4">
-          <label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>Priority</label>
-          <div className="flex gap-2">
+
+            {/* Divider dot */}
+            <span className="w-1 h-1 rounded-full" style={{ background: 'var(--text-muted)', opacity: 0.3 }} />
+
+            {/* Priority — compact colored dots with labels */}
             {Object.entries(PRIORITIES).map(([k, c]) => (
               <button key={k} onClick={() => setNewTask({ ...newTask, priority: k })}
-                className="pressable flex-1 py-3 rounded-xl capitalize font-medium"
-                style={{ backgroundColor: c + '33', color: c, ...(newTask.priority === k ? { boxShadow: `0 0 0 2px ${c}` } : { opacity: 0.5 }) }}>
+                className="pressable flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium capitalize"
+                style={{
+                  background: newTask.priority === k ? c + '20' : 'transparent',
+                  color: newTask.priority === k ? c : 'var(--text-muted)',
+                  border: newTask.priority === k ? `1px solid ${c}40` : '1px solid transparent',
+                }}>
+                <span className="w-2 h-2 rounded-full" style={{ background: c, opacity: newTask.priority === k ? 1 : 0.4 }} />
                 {k}
               </button>
             ))}
           </div>
+
+          {/* Due date — inline, not a full-width block */}
+          <div className="flex items-center gap-3 mb-5">
+            <button
+              onClick={() => {
+                const picker = document.getElementById('add-date-picker');
+                if (picker) picker.showPicker ? picker.showPicker() : picker.click();
+              }}
+              className="pressable flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
+              style={{
+                background: newTask.dueDate ? 'rgba(96, 165, 250, 0.1)' : 'transparent',
+                color: newTask.dueDate ? '#60a5fa' : 'var(--text-muted)',
+                border: newTask.dueDate ? '1px solid rgba(96, 165, 250, 0.2)' : '1px solid var(--border-card)',
+              }}>
+              <Icon name="Calendar" size={14} />
+              {newTask.dueDate ? formatDate(newTask.dueDate) : 'Add date'}
+            </button>
+            <input id="add-date-picker" type="date"
+              value={getDateInputValue(newTask.dueDate)}
+              onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value || '' })}
+              min={new Date().toISOString().split('T')[0]}
+              className="sr-only" tabIndex={-1} />
+            {newTask.dueDate && (
+              <button onClick={() => setNewTask({ ...newTask, dueDate: '' })}
+                className="pressable p-1 rounded-full" style={{ color: 'var(--text-muted)' }}>
+                <Icon name="X" size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Submit — clean, not oversized */}
+          <button onClick={handleSubmit} disabled={!newTask.title.trim()}
+            className="pressable w-full py-3 rounded-xl font-semibold text-sm text-white disabled:opacity-30"
+            style={{ background: 'var(--accent)' }}>
+            Add Task
+          </button>
         </div>
-        <div className="mb-6">
-          <label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>Due Date (Optional)</label>
-          <input type="date" value={getDateInputValue(newTask.dueDate)}
-            onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value || '' })}
-            className="w-full rounded-xl px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
-            style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
-            min={new Date().toISOString().split('T')[0]} />
-          {newTask.dueDate && (
-            <button onClick={() => setNewTask({ ...newTask, dueDate: '' })}
-              className="pressable mt-2 text-xs" style={{ color: 'var(--priority-high)' }}>Clear due date</button>
-          )}
-        </div>
-        <button onClick={() => handleClose(onAdd)} disabled={!newTask.title.trim()}
-          className="pressable w-full py-4 rounded-xl font-bold text-lg text-white disabled:opacity-40"
-          style={{ background: 'var(--accent)' }}>Add Task</button>
       </div>
     </div>
   );

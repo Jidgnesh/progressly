@@ -197,7 +197,7 @@ const StatsSummary = ({ totalCount, completedCount, streak, allTasks, expanded, 
               border: '1px solid var(--border-input)',
             }}
           >
-            <div className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{card.value}</div>
+            <div className="text-lg font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>{card.value}</div>
             <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{card.label}</div>
           </div>
         ))}
@@ -276,7 +276,7 @@ const DeleteConfirmModal = ({ task, onCancel, onConfirm }) => {
         <div className="flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4" style={{ background: 'rgba(239, 68, 68, 0.15)' }}>
           <Icon name="Trash2" size={32} color="var(--priority-high)" />
         </div>
-        <h3 id="delete-modal-title" className="text-xl font-bold text-center mb-2" style={{ color: 'var(--text-primary)' }}>Delete Task?</h3>
+        <h3 id="delete-modal-title" className="text-xl font-semibold text-center mb-2" style={{ color: 'var(--text-primary)' }}>Delete Task?</h3>
         <p className="text-center mb-2" style={{ color: 'var(--text-secondary)' }}>"{task.title}"</p>
         {hasSubtasks && (
           <p className="text-sm text-center mb-4" style={{ color: '#f59e0b' }}>
@@ -317,7 +317,7 @@ const EditTaskModal = ({ editForm, setEditForm, onSave, onCancel }) => {
           <div className="w-10 h-1 rounded-full" style={{ background: 'var(--text-muted)' }} />
         </div>
         <div className="flex justify-between items-center mb-6">
-          <h2 id="edit-modal-title" className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Edit Task</h2>
+          <h2 id="edit-modal-title" className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Edit Task</h2>
           <button onClick={() => handleClose(onCancel)} className="pressable text-2xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
         </div>
         <input type="text" placeholder="Task name" value={editForm.title}
@@ -391,7 +391,7 @@ const AddTaskModal = ({ newTask, setNewTask, onAdd, onCancel }) => {
           <div className="w-10 h-1 rounded-full" style={{ background: 'var(--text-muted)' }} />
         </div>
         <div className="flex justify-between items-center mb-6">
-          <h2 id="add-modal-title" className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Add Task</h2>
+          <h2 id="add-modal-title" className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Add Task</h2>
           <button onClick={() => handleClose(onCancel)} className="pressable text-2xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
         </div>
         <input type="text" placeholder="What's your task?" value={newTask.title}
@@ -600,7 +600,7 @@ const TaskItem = ({
                         <div className="flex items-center justify-between mb-1">
                           <span className={`text-sm truncate ${st.progress === 100 ? 'line-through' : ''}`}
                             style={{ color: st.progress === 100 ? 'var(--text-muted)' : 'var(--text-primary)' }}>{st.title}</span>
-                          <span className="text-xs font-bold ml-2" style={{ color: getProgressColor(st.progress) }}>{st.progress}</span>
+                          <span className="text-xs font-bold tabular-nums ml-2" style={{ color: getProgressColor(st.progress) }}>{st.progress}</span>
                         </div>
                         <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--divider)' }}>
                           <div className="h-full rounded-full" style={{ width: `${st.progress}%`, background: getProgressColor(st.progress), transition: 'width 200ms var(--ease-out)' }} />

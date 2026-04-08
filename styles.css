@@ -21,6 +21,9 @@
   --text-muted: #64748b;
   --divider: #334155;
 
+  /* Typography */
+  --font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
   /* Shared tokens */
   --accent: #7c3aed;
   --accent-glow: rgba(124, 58, 237, 0.4);
@@ -79,9 +82,14 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-family);
   background: var(--bg-base);
   color: var(--text-primary);
+}
+
+/* Typography rhythm */
+h1, h2, h3, .text-xl, .text-2xl, .text-3xl {
+  line-height: 1.2;
 }
 
 /* ============================================
@@ -617,4 +625,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 [data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator {
   filter: none;
+}
+
+/* ============================================
+   TABULAR NUMBERS
+   ============================================ */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }

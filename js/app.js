@@ -836,7 +836,7 @@ function App() {
               {/* Forgot Password Header */}
               {authPage === 'forgot' && (
                 <div className="mb-6">
-                  <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Reset Password</h2>
+                  <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Reset Password</h2>
                   <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Enter your email to reset your password</p>
                 </div>
               )}
@@ -1239,7 +1239,7 @@ function App() {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <Icon name="Trash2" size={24} color="var(--priority-high)" />
-                  <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Trash</h1>
+                  <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Trash</h1>
                 </div>
                 <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{trash.length} deleted task{trash.length !== 1 ? 's' : ''}</p>
               </div>
@@ -1294,7 +1294,7 @@ function App() {
           <div className="px-4 pt-6 pb-4">
             <div className="flex items-center gap-2 mb-1">
               <Icon name="History" size={24} color="var(--accent)" />
-              <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>History</h1>
+              <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>History</h1>
             </div>
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>All your tasks across months</p>
           </div>
@@ -1313,7 +1313,7 @@ function App() {
                   <div key={`${monthData.year}-${monthData.month}`} className="stagger-item" style={{ animationDelay: `${gi * 80}ms` }}>
                     <div className="flex items-center gap-3 mb-3">
                       <ProgressCircle progress={stats.avgProgress} size={24} strokeWidth={3} />
-                      <h3 className="font-bold" style={{ color: 'var(--text-primary)' }}>
+                      <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
                         {MONTHS_FULL[monthData.month]} {monthData.year}
                       </h3>
                       <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -1374,7 +1374,7 @@ function App() {
         {/* Header */}
         <div className="px-4 pt-6 pb-4">
           <div className="flex items-center justify-between mb-1">
-            <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
               {getGreeting(currentUser?.name || 'User')}
             </h1>
             <div className="flex items-center gap-1">
@@ -1394,10 +1394,10 @@ function App() {
             <Icon name="ChevronLeft" size={20} />
           </button>
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
               {MONTHS_FULL[currentMonth]} {currentYear}
             </h2>
-            <span className="text-sm font-bold" style={{ color: getProgressColor(avgProgress) }}>
+            <span className="text-sm font-bold tabular-nums" style={{ color: getProgressColor(avgProgress) }}>
               {avgProgress}%
             </span>
           </div>

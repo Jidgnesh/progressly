@@ -1,11 +1,12 @@
-import { Home, History, Trash2 } from 'lucide-react';
+import { Home, History, Trash2, Plus } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Page } from '@/types';
 
-interface BottomNavProps {
+interface SideNavProps {
   currentPage: Page;
   setCurrentPage: (page: Page) => void;
   trashCount: number;
+  onAddTask: () => void;
 }
 
 interface NavTab {
@@ -20,29 +21,31 @@ const tabs: NavTab[] = [
   { id: 'trash', icon: Trash2, label: 'Trash' },
 ];
 
-const BottomNav = ({ currentPage, setCurrentPage, trashCount }: BottomNavProps) => {
+const SideNav = ({ currentPage, setCurrentPage, trashCount, onAddTask }: SideNavProps) => {
   const activeIndex = tabs.findIndex(t => t.id === currentPage);
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50"
+      className="fixed left-0 top-0 bottom-0 z-50 flex flex-col items-center py-6 px-2 gap-2"
       role="navigation"
       aria-label="Main navigation"
       style={{
+        width: 64,
         background: 'var(--bg-nav)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
-        borderTop: '1px solid var(--border-card)',
+        borderRight: '1px solid var(--border-card)',
       }}
     >
-      <div className="relative flex justify-around items-center px-4 py-3">
-        {/* Sliding pill indicator */}
+      {/* Sliding pill indicator */}
+      <div className="relative flex flex-col items-center gap-1 flex-1">
         <div
-          className="nav-pill absolute bottom-1 h-[3px] rounded-full"
+          className="nav-pill absolute left-0 w-[3px] rounded-full"
           style={{
-            width: 32,
+            height: 24,
             background: 'var(--accent)',
-            left: `calc(${(activeIndex / tabs.length) * 100}% + ${100 / tabs.length / 2}% - 16px)`,
+            top: `calc(${activeIndex * 56}px + 14px)`,
+            transition: 'top 200ms var(--ease-out)',
           }}
         />
 
@@ -53,19 +56,19 @@ const BottomNav = ({ currentPage, setCurrentPage, trashCount }: BottomNavProps) 
             <button
               key={tab.id}
               onClick={() => setCurrentPage(tab.id)}
-              className="pressable relative flex flex-col items-center gap-1 p-2"
+              className="pressable relative flex flex-col items-center justify-center gap-1 w-12 h-12 rounded-xl"
               aria-label={tab.label}
               aria-current={isActive ? 'page' : undefined}
               style={{
                 color: isActive ? 'var(--accent)' : 'var(--text-muted)',
-                ...(isActive ? { filter: 'drop-shadow(0 0 8px var(--accent-glow))' } : {}),
+                background: isActive ? 'var(--accent)' + '12' : 'transparent',
               }}
             >
-              <IconComponent size={22} />
-              <span className="text-[10px] font-medium">{tab.label}</span>
+              <IconComponent size={20} />
+              <span className="text-[9px] font-medium leading-none">{tab.label}</span>
               {tab.id === 'trash' && trashCount > 0 && (
                 <span
-                  className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
+                  className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full text-[8px] font-bold flex items-center justify-center text-white"
                   style={{ background: 'var(--priority-high)' }}
                 >
                   {trashCount > 9 ? '9+' : trashCount}
@@ -75,8 +78,27 @@ const BottomNav = ({ currentPage, setCurrentPage, trashCount }: BottomNavProps) 
           );
         })}
       </div>
+
+      {/* Add task button — fixed bottom-right */}
+      <button
+        onClick={onAddTask}
+        className="pressable fixed flex items-center justify-center text-white"
+        style={{
+          bottom: 24,
+          right: 24,
+          width: 48,
+          height: 48,
+          borderRadius: '50%',
+          background: 'var(--accent)',
+          boxShadow: '0 4px 20px var(--accent-glow)',
+          zIndex: 50,
+        }}
+        aria-label="Add new task"
+      >
+        <Plus size={22} />
+      </button>
     </nav>
   );
 };
 
-export default BottomNav;
+export default SideNav;

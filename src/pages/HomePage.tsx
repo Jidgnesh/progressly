@@ -94,7 +94,7 @@ interface HomePageProps {
   // Quick add
   quickAddTitle: string;
   setQuickAddTitle: (title: string) => void;
-  onQuickAdd: () => void;
+  onQuickAddWithOptions: (title: string, priority: 'high' | 'medium' | 'low', category: string, dueDate: string) => void;
 
   // Add task modal
   showAdd: boolean;
@@ -185,7 +185,7 @@ const HomePage = ({
   celebratingTask,
   quickAddTitle,
   setQuickAddTitle,
-  onQuickAdd,
+  onQuickAddWithOptions,
   showAdd,
   setShowAdd,
   newTask,
@@ -374,7 +374,7 @@ const HomePage = ({
         <QuickAdd
           value={quickAddTitle}
           onChange={setQuickAddTitle}
-          onAdd={onQuickAdd}
+          onAddWithOptions={onQuickAddWithOptions}
         />
       </div>
 

@@ -57,7 +57,6 @@ const App = () => {
     syncing,
     celebratingTask,
     addTask,
-    quickAddTask,
     moveToTrash,
     restoreFromTrash,
     permanentDelete,
@@ -139,10 +138,11 @@ const App = () => {
     setShowAdd(false);
   }, [addTask, newTask, currentMonth, currentYear]);
 
-  const handleQuickAdd = useCallback(() => {
-    quickAddTask(quickAddTitle, currentMonth, currentYear);
+  const handleQuickAddWithOptions = useCallback((title: string, priority: 'high' | 'medium' | 'low', category: string, dueDate: string) => {
+    addTask({ title, priority, category, dueDate }, currentMonth, currentYear);
     setQuickAddTitle('');
-  }, [quickAddTask, quickAddTitle, currentMonth, currentYear]);
+    showToast('Task added');
+  }, [addTask, currentMonth, currentYear, showToast]);
 
   const handleMoveToTrash = useCallback((id: number) => {
     moveToTrash(id);
@@ -429,7 +429,7 @@ const App = () => {
       celebratingTask={celebratingTask}
       quickAddTitle={quickAddTitle}
       setQuickAddTitle={setQuickAddTitle}
-      onQuickAdd={handleQuickAdd}
+      onQuickAddWithOptions={handleQuickAddWithOptions}
       showAdd={showAdd}
       setShowAdd={setShowAdd}
       newTask={newTask}

@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { getFirestore, enableNetwork, enableIndexedDbPersistence } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBfPKPTGvduOK3nU8eqsqivxNs--drccek",
@@ -14,23 +14,13 @@ const FIREBASE_CONFIG = {
 
 const app = initializeApp(FIREBASE_CONFIG);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// Initialize Firestore with persistent cache (replaces deprecated enableIndexedDbPersistence)
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+});
 
 // Set auth persistence
 setPersistence(auth, browserLocalPersistence).catch((err) => {
   console.warn('Failed to set auth persistence:', err);
-});
-
-// Enable Firestore network
-enableNetwork(db).catch((err) => {
-  console.warn('Failed to enable Firestore network:', err);
-});
-
-// Enable offline persistence
-enableIndexedDbPersistence(db).catch((err) => {
-  if (err.code === 'failed-precondition') {
-    console.warn('Firestore persistence failed: Multiple tabs open');
-  } else if (err.code === 'unimplemented') {
-    console.warn('Firestore persistence not supported');
-  }
 });

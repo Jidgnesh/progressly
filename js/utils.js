@@ -232,34 +232,23 @@ const getSystemTheme = () => {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 };
 
-const getStoredThemePreference = () => {
-  return localStorage.getItem(THEME_KEY) || 'system';
-};
-
-const getEffectiveTheme = (preference) => {
-  if (preference === 'system') return getSystemTheme();
-  return preference;
-};
-
-const applyTheme = (preference) => {
-  const effective = getEffectiveTheme(preference);
-  if (effective === 'dark') {
+const applyTheme = (theme) => {
+  if (theme === 'dark') {
     document.documentElement.removeAttribute('data-theme');
   } else {
     document.documentElement.setAttribute('data-theme', 'light');
   }
 };
 
-const cycleThemePreference = (current) => {
-  if (current === 'system') return 'light';
-  if (current === 'light') return 'dark';
-  return 'system';
+const toggleTheme = (current) => {
+  return current === 'dark' ? 'light' : 'dark';
 };
 
 const initTheme = () => {
-  const pref = getStoredThemePreference();
-  applyTheme(pref);
-  return pref;
+  const stored = localStorage.getItem(THEME_KEY);
+  const theme = stored === 'dark' || stored === 'light' ? stored : getSystemTheme();
+  applyTheme(theme);
+  return theme;
 };
 
 // ============================================

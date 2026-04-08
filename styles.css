@@ -47,22 +47,6 @@
   --divider: #e2e8f0;
 }
 
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) {
-    --bg-base: #f8fafc;
-    --bg-card: #ffffff;
-    --bg-card-60: rgba(255, 255, 255, 0.6);
-    --bg-input: #f1f5f9;
-    --bg-nav: rgba(248, 250, 252, 0.85);
-    --border-card: rgba(15, 23, 42, 0.06);
-    --border-elevated: rgba(15, 23, 42, 0.1);
-    --border-input: rgba(15, 23, 42, 0.08);
-    --text-primary: #0f172a;
-    --text-secondary: #64748b;
-    --text-muted: #94a3b8;
-    --divider: #e2e8f0;
-  }
-}
 
 /* ============================================
    BASE RESET

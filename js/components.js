@@ -28,14 +28,14 @@ const ThemeToggle = ({ preference, onToggle }) => {
     setTimeout(() => setRotating(false), 200);
   };
 
-  const iconName = preference === 'light' ? 'Sun' : preference === 'dark' ? 'Moon' : 'Monitor';
+  const iconName = preference === 'light' ? 'Sun' : 'Moon';
 
   return (
     <button
       onClick={handleClick}
       className="pressable p-2 rounded-xl"
       style={{ color: 'var(--text-secondary)' }}
-      aria-label={`Theme: ${preference}. Click to cycle.`}
+      aria-label={`Switch to ${preference === 'dark' ? 'light' : 'dark'} mode`}
     >
       <span className={`theme-icon inline-flex ${rotating ? 'theme-icon-rotate' : ''}`}>
         <Icon name={iconName} size={20} />

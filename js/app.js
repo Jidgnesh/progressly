@@ -164,24 +164,15 @@ function App() {
       }
     };
 
-    // Theme toggle handler
+    // Theme toggle handler — just dark/light, no system option
     const handleThemeToggle = () => {
-      const next = cycleThemePreference(themePreference);
+      const next = toggleTheme(themePreference);
       setThemePreference(next);
       localStorage.setItem(THEME_KEY, next);
       document.body.classList.add('theme-transitioning');
       applyTheme(next);
       setTimeout(() => document.body.classList.remove('theme-transitioning'), 300);
     };
-
-    // System theme change listener
-    useEffect(() => {
-      if (themePreference !== 'system') return;
-      const mq = window.matchMedia('(prefers-color-scheme: dark)');
-      const handler = () => applyTheme('system');
-      mq.addEventListener('change', handler);
-      return () => mq.removeEventListener('change', handler);
-    }, [themePreference]);
 
     // Keyboard shortcuts (home page only, not when typing or modal open)
     useEffect(() => {

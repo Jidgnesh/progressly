@@ -128,6 +128,9 @@ function App() {
     const [themePreference, setThemePreference] = useState(() => initTheme());
     const [showStats, setShowStats] = useState(false);
 
+    // Quick-add state
+    const [quickAddTitle, setQuickAddTitle] = useState('');
+
     // Swipe hint state
     const [showSwipeHint, setShowSwipeHint] = useState(() => !localStorage.getItem(SWIPE_HINT_KEY));
 
@@ -176,6 +179,50 @@ function App() {
       mq.addEventListener('change', handler);
       return () => mq.removeEventListener('change', handler);
     }, [themePreference]);
+
+    // Keyboard shortcuts (home page only, not when typing or modal open)
+    useEffect(() => {
+      const handleKeyDown = (e) => {
+        const tag = e.target.tagName.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+        if (!isAuthenticated || currentPage !== 'home') return;
+        if (showAdd || editingTask || deleteConfirm) return;
+
+        switch (e.key) {
+          case 'n':
+            e.preventDefault();
+            setShowAdd(true);
+            break;
+          case 'ArrowLeft':
+            e.preventDefault();
+            changeMonth(-1);
+            break;
+          case 'ArrowRight':
+            e.preventDefault();
+            changeMonth(1);
+            break;
+          case '1':
+            setFilter('all');
+            break;
+          case '2':
+            setFilter('pending');
+            break;
+          case '3':
+            setFilter('inprogress');
+            break;
+          case '4':
+            setFilter('completed');
+            break;
+          case '/':
+            e.preventDefault();
+            setSearchQuery(searchQuery ? '' : ' ');
+            break;
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isAuthenticated, currentPage, showAdd, editingTask, deleteConfirm, searchQuery]);
 
     // Auto-complete email with @gmail.com if no @ present
     const completeEmail = (email) => {
@@ -650,6 +697,24 @@ function App() {
     };
 
     // ==================== TASK OPERATIONS ====================
+    const quickAddTask = () => {
+      if (!quickAddTitle.trim()) return;
+      const task = {
+        id: Date.now(),
+        title: quickAddTitle.trim(),
+        priority: 'medium',
+        category: 'Personal',
+        month: currentMonth,
+        year: currentYear,
+        progress: 0,
+        subtasks: [],
+        dueDate: null
+      };
+      saveTasks([...tasks, task]);
+      setQuickAddTitle('');
+      showToast('Task added');
+    };
+
     const addTask = () => {
       if (!newTask.title.trim()) return;
       const task = {
@@ -1400,6 +1465,9 @@ function App() {
             <span className="text-sm font-bold tabular-nums" style={{ color: getProgressColor(avgProgress) }}>
               {avgProgress}%
             </span>
+            <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
+              {completedCount}/{totalCount}
+            </span>
           </div>
           <button onClick={() => changeMonth(1)} className="pressable-sm p-2" style={{ color: 'var(--text-secondary)' }}>
             <Icon name="ChevronRight" size={20} />
@@ -1514,6 +1582,37 @@ function App() {
               </div>
             </>
           )}
+        </div>
+
+        {/* Quick Add */}
+        <div className="px-4 mb-3">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Add a task... (n for details)"
+              value={quickAddTitle}
+              onChange={(e) => setQuickAddTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') quickAddTask();
+                if (e.key === 'Escape') { setQuickAddTitle(''); e.target.blur(); }
+              }}
+              className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+              style={{
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-card)',
+                color: 'var(--text-primary)',
+              }}
+            />
+            {quickAddTitle.trim() && (
+              <button
+                onClick={quickAddTask}
+                className="pressable px-4 rounded-xl text-sm font-medium text-white"
+                style={{ background: 'var(--accent)' }}
+              >
+                Add
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Task List */}

@@ -84,7 +84,7 @@ const Toast = ({ message, type = 'success', visible, onDismiss }) => {
   const accentColor = type === 'success' ? 'var(--priority-low)' : 'var(--priority-high)';
 
   return (
-    <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-full max-w-[360px] px-4`}>
+    <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-full max-w-[360px] px-4`} role="alert" aria-live="polite">
       <div
         className={`flex items-center gap-3 px-4 py-3 rounded-2xl ${exiting ? 'toast-exit' : 'toast-enter'}`}
         style={{
@@ -109,6 +109,7 @@ const Toast = ({ message, type = 'success', visible, onDismiss }) => {
           onClick={() => { setExiting(true); setTimeout(onDismiss, 200); }}
           className="pressable p-1"
           style={{ color: 'var(--text-muted)' }}
+          aria-label="Dismiss notification"
         >
           <Icon name="X" size={16} />
         </button>
@@ -257,14 +258,16 @@ const DeleteConfirmModal = ({ task, onCancel, onConfirm }) => {
 
   return (
     <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${exiting ? 'overlay-exit' : 'overlay-enter'}`}
-      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => handleClose(onCancel)}>
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => handleClose(onCancel)}
+      onKeyDown={(e) => { if (e.key === 'Escape') handleClose(onCancel); }}>
       <div className={`${exiting ? 'modal-exit' : 'modal-enter'} rounded-2xl p-6 max-w-sm w-full`}
+        role="dialog" aria-modal="true" aria-labelledby="delete-modal-title"
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border-elevated)', transformOrigin: 'center' }}
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4" style={{ background: 'rgba(239, 68, 68, 0.15)' }}>
           <Icon name="Trash2" size={32} color="var(--priority-high)" />
         </div>
-        <h3 className="text-xl font-bold text-center mb-2" style={{ color: 'var(--text-primary)' }}>Delete Task?</h3>
+        <h3 id="delete-modal-title" className="text-xl font-bold text-center mb-2" style={{ color: 'var(--text-primary)' }}>Delete Task?</h3>
         <p className="text-center mb-2" style={{ color: 'var(--text-secondary)' }}>"{task.title}"</p>
         {hasSubtasks && (
           <p className="text-sm text-center mb-4" style={{ color: '#f59e0b' }}>
@@ -295,20 +298,22 @@ const EditTaskModal = ({ editForm, setEditForm, onSave, onCancel }) => {
 
   return (
     <div className={`fixed inset-0 z-50 flex items-end ${exiting ? 'overlay-exit' : 'overlay-enter'}`}
-      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => handleClose(onCancel)}>
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => handleClose(onCancel)}
+      onKeyDown={(e) => { if (e.key === 'Escape') handleClose(onCancel); }}>
       <div className={`${exiting ? 'drawer-exit' : 'drawer-enter'} w-full rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto`}
+        role="dialog" aria-modal="true" aria-labelledby="edit-modal-title"
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border-elevated)' }}
         onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-center mb-4">
           <div className="w-10 h-1 rounded-full" style={{ background: 'var(--text-muted)' }} />
         </div>
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Edit Task</h2>
+          <h2 id="edit-modal-title" className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Edit Task</h2>
           <button onClick={() => handleClose(onCancel)} className="pressable text-2xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
         </div>
         <input type="text" placeholder="Task name" value={editForm.title}
           onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-          className="w-full rounded-xl px-4 py-4 mb-4 outline-none text-lg"
+          className="w-full rounded-xl px-4 py-4 mb-4 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 text-lg"
           style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }} autoFocus />
         <div className="mb-4">
           <label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>Category</label>
@@ -338,7 +343,7 @@ const EditTaskModal = ({ editForm, setEditForm, onSave, onCancel }) => {
           <label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>Due Date (Optional)</label>
           <input type="date" value={getDateInputValue(editForm.dueDate)}
             onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value || '' })}
-            className="w-full rounded-xl px-4 py-3 outline-none"
+            className="w-full rounded-xl px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
             style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
             min={new Date().toISOString().split('T')[0]} />
           {editForm.dueDate && (
@@ -367,20 +372,22 @@ const AddTaskModal = ({ newTask, setNewTask, onAdd, onCancel }) => {
 
   return (
     <div className={`fixed inset-0 z-50 flex items-end ${exiting ? 'overlay-exit' : 'overlay-enter'}`}
-      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => handleClose(onCancel)}>
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => handleClose(onCancel)}
+      onKeyDown={(e) => { if (e.key === 'Escape') handleClose(onCancel); }}>
       <div className={`${exiting ? 'drawer-exit' : 'drawer-enter'} w-full rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto`}
+        role="dialog" aria-modal="true" aria-labelledby="add-modal-title"
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border-elevated)' }}
         onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-center mb-4">
           <div className="w-10 h-1 rounded-full" style={{ background: 'var(--text-muted)' }} />
         </div>
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Add Task</h2>
+          <h2 id="add-modal-title" className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Add Task</h2>
           <button onClick={() => handleClose(onCancel)} className="pressable text-2xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
         </div>
         <input type="text" placeholder="What's your task?" value={newTask.title}
           onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-          className="w-full rounded-xl px-4 py-4 mb-4 outline-none text-lg"
+          className="w-full rounded-xl px-4 py-4 mb-4 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 text-lg"
           style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }} autoFocus />
         <div className="mb-4">
           <label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>Category</label>
@@ -410,7 +417,7 @@ const AddTaskModal = ({ newTask, setNewTask, onAdd, onCancel }) => {
           <label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>Due Date (Optional)</label>
           <input type="date" value={getDateInputValue(newTask.dueDate)}
             onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value || '' })}
-            className="w-full rounded-xl px-4 py-3 outline-none"
+            className="w-full rounded-xl px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
             style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
             min={new Date().toISOString().split('T')[0]} />
           {newTask.dueDate && (
@@ -431,16 +438,18 @@ const AddTaskModal = ({ newTask, setNewTask, onAdd, onCancel }) => {
 // ============================================
 const BottomNav = ({ currentPage, setCurrentPage, trashCount }) => {
   const tabs = [
-    { id: 'home', icon: 'Home' },
-    { id: 'history', icon: 'History' },
-    { id: 'trash', icon: 'Trash2' },
+    { id: 'home', icon: 'Home', label: 'Home' },
+    { id: 'history', icon: 'History', label: 'History' },
+    { id: 'trash', icon: 'Trash2', label: 'Trash' },
   ];
 
   const activeIndex = tabs.findIndex(t => t.id === currentPage);
 
   return (
-    <div
+    <nav
       className="fixed bottom-0 left-0 right-0 z-50"
+      role="navigation"
+      aria-label="Main navigation"
       style={{
         background: 'var(--bg-nav)',
         backdropFilter: 'blur(12px)',
@@ -466,6 +475,8 @@ const BottomNav = ({ currentPage, setCurrentPage, trashCount }) => {
               key={tab.id}
               onClick={() => setCurrentPage(tab.id)}
               className="pressable relative flex flex-col items-center gap-1 p-2"
+              aria-label={tab.label}
+              aria-current={isActive ? 'page' : undefined}
               style={{
                 color: isActive ? 'var(--accent)' : 'var(--text-muted)',
                 ...(isActive ? { filter: 'drop-shadow(0 0 8px var(--accent-glow))' } : {}),
@@ -484,7 +495,7 @@ const BottomNav = ({ currentPage, setCurrentPage, trashCount }) => {
           );
         })}
       </div>
-    </div>
+    </nav>
   );
 };
 
@@ -522,10 +533,10 @@ const TaskItem = ({
         ...(overdue ? { boxShadow: '0 0 0 2px rgba(239, 68, 68, 0.2)' } : {}),
       }}
     >
-      <div className="pressable-card p-4 flex items-center gap-3 cursor-pointer" onClick={onToggleExpand}>
+      <div className="pressable-card p-4 flex items-center gap-3 cursor-pointer" onClick={onToggleExpand} aria-expanded={isExpanded}>
         <ProgressCircle progress={taskProgress} size={36} strokeWidth={3} />
         <div className="flex-1 min-w-0">
-          <p className={`font-medium text-base ${taskProgress === 100 ? 'line-through' : ''}`}
+          <p className={`font-medium text-base ${taskProgress === 100 ? 'line-through' : ''} ${!isExpanded ? 'truncate' : ''}`}
             style={{ color: taskProgress === 100 ? 'var(--text-muted)' : 'var(--text-primary)' }}>
             {searchQuery ? highlightText(task.title, searchQuery) : task.title}
           </p>
@@ -562,8 +573,8 @@ const TaskItem = ({
             {addingSubtaskTo === task.id && (
               <div className="flex gap-2 mb-3">
                 <input type="text" placeholder="Subtask name..." value={newSubtask} onChange={(e) => setNewSubtask(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && onAddSubtask()}
-                  className="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
+                  onKeyDown={(e) => e.key === 'Enter' && onAddSubtask()}
+                  className="flex-1 rounded-lg px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
                   style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
                   autoFocus />
                 <button onClick={onAddSubtask} className="pressable px-4 rounded-lg text-sm text-white" style={{ background: 'var(--accent)' }}>Add</button>
@@ -597,7 +608,7 @@ const TaskItem = ({
                         <input type="number" min="0" max="100" value={st.progress}
                           onChange={(e) => onUpdateSubtaskProgress(st.id, Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-14 h-7 rounded text-center text-sm font-bold outline-none"
+                          className="w-14 h-7 rounded text-center text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
                           style={{ background: 'var(--divider)', color: getProgressColor(st.progress) }} />
                         <button onClick={() => onUpdateSubtaskProgress(st.id, Math.min(100, st.progress + 10))} className="pressable w-7 h-7 rounded flex items-center justify-center" style={{ background: 'var(--divider)' }}>
                           <Icon name="Plus" size={14} />

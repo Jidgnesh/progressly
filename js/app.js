@@ -130,6 +130,9 @@ function App() {
     // Celebration state
     const [celebratingTask, setCelebratingTask] = useState(null);
 
+    // Auth submitting state (double-submit protection)
+    const [authSubmitting, setAuthSubmitting] = useState(false);
+
     // Toast functions
     const showToast = (message, type = 'success') => {
       setToast({ message, type, visible: true });
@@ -255,110 +258,128 @@ function App() {
 
     const handleSignUp = async (e) => {
       e.preventDefault();
+      if (authSubmitting) return;
+      setAuthSubmitting(true);
       setAuthError('');
       const completedEmail = completeEmail(authForm.email);
       setAuthForm(prev => ({...prev, email: completedEmail}));
 
       if (!authForm.name || !completedEmail || !authForm.password) {
         setAuthError('All fields are required');
+        setAuthSubmitting(false);
         return;
       }
 
       if (authForm.password !== authForm.confirmPassword) {
         setAuthError('Passwords do not match');
+        setAuthSubmitting(false);
         return;
       }
 
       if (authForm.password.length < 6) {
         setAuthError('Password must be at least 6 characters');
+        setAuthSubmitting(false);
         return;
       }
 
-      // Try Firebase first if available
-      if (isFirebaseAvailable()) {
-        const result = await FirebaseService.signUp(completedEmail, authForm.password, authForm.name);
-        if (result.success) {
-          setCurrentUser(result.user);
-          setIsAuthenticated(true);
-          setUseFirebase(true);
-          setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
+      try {
+        // Try Firebase first if available
+        if (isFirebaseAvailable()) {
+          const result = await FirebaseService.signUp(completedEmail, authForm.password, authForm.name);
+          if (result.success) {
+            setCurrentUser(result.user);
+            setIsAuthenticated(true);
+            setUseFirebase(true);
+            setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
 
-          // Migrate localStorage tasks to Firebase if any exist
-          const localTasks = localStorage.getItem(STORAGE_KEY);
-          if (localTasks) {
-            const tasks = JSON.parse(localTasks);
-            await FirebaseService.saveTasks(result.user.uid, tasks);
+            // Migrate localStorage tasks to Firebase if any exist
+            const localTasks = localStorage.getItem(STORAGE_KEY);
+            if (localTasks) {
+              const tasks = JSON.parse(localTasks);
+              await FirebaseService.saveTasks(result.user.uid, tasks);
+            }
+            return;
+          } else {
+            // Firebase sign-up failed - show the error from Firebase
+            setAuthError(result.error || 'Sign up failed');
+            return;
           }
-          return;
-        } else {
-          // Firebase sign-up failed - show the error from Firebase
-          setAuthError(result.error || 'Sign up failed');
+        }
+
+        // Fallback to localStorage (only if Firebase is not available)
+        const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+        if (users.find(u => u.email === completedEmail)) {
+          setAuthError('Email already exists in local storage. Please use Firebase sign-up or use a different email.');
           return;
         }
+
+        const hashedPw = await hashPassword(authForm.password);
+        const newUser = {
+          id: Date.now(),
+          name: authForm.name,
+          email: completedEmail,
+          password: hashedPw,
+          createdAt: Date.now()
+        };
+
+        users.push(newUser);
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+        localStorage.setItem(AUTH_KEY, JSON.stringify({ email: completedEmail, name: authForm.name }));
+        setIsAuthenticated(true);
+        setUseFirebase(false);
+        setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
+      } finally {
+        setAuthSubmitting(false);
       }
-
-      // Fallback to localStorage (only if Firebase is not available)
-      const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-      if (users.find(u => u.email === completedEmail)) {
-        setAuthError('Email already exists in local storage. Please use Firebase sign-up or use a different email.');
-        return;
-      }
-
-      const newUser = {
-        id: Date.now(),
-        name: authForm.name,
-        email: completedEmail,
-        password: authForm.password, // In production, hash this!
-        createdAt: Date.now()
-      };
-
-      users.push(newUser);
-      localStorage.setItem(USERS_KEY, JSON.stringify(users));
-      localStorage.setItem(AUTH_KEY, JSON.stringify({ email: completedEmail, name: authForm.name }));
-      setIsAuthenticated(true);
-      setUseFirebase(false);
-      setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
     };
 
     const handleSignIn = async (e) => {
       e.preventDefault();
+      if (authSubmitting) return;
+      setAuthSubmitting(true);
       setAuthError('');
       const completedEmail = completeEmail(authForm.email);
       setAuthForm(prev => ({...prev, email: completedEmail}));
 
       if (!completedEmail || !authForm.password) {
         setAuthError('Email and password are required');
+        setAuthSubmitting(false);
         return;
       }
 
-      // Try Firebase first if available
-      if (isFirebaseAvailable()) {
-        const result = await FirebaseService.signIn(completedEmail, authForm.password);
-        if (result.success) {
-          setCurrentUser(result.user);
-          setIsAuthenticated(true);
-          setUseFirebase(true);
-          setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
-          return;
-        } else {
-          setAuthError(result.error || 'Invalid email or password');
+      try {
+        // Try Firebase first if available
+        if (isFirebaseAvailable()) {
+          const result = await FirebaseService.signIn(completedEmail, authForm.password);
+          if (result.success) {
+            setCurrentUser(result.user);
+            setIsAuthenticated(true);
+            setUseFirebase(true);
+            setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
+            return;
+          } else {
+            setAuthError(result.error || 'Invalid email or password');
+            return;
+          }
+        }
+
+        // Fallback to localStorage
+        const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+        const hashedPw = await hashPassword(authForm.password);
+        const user = users.find(u => u.email === completedEmail && u.password === hashedPw);
+
+        if (!user) {
+          setAuthError('Invalid email or password');
           return;
         }
+
+        localStorage.setItem(AUTH_KEY, JSON.stringify({ email: user.email, name: user.name }));
+        setIsAuthenticated(true);
+        setUseFirebase(false);
+        setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
+      } finally {
+        setAuthSubmitting(false);
       }
-
-      // Fallback to localStorage
-      const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-      const user = users.find(u => u.email === completedEmail && u.password === authForm.password);
-
-      if (!user) {
-        setAuthError('Invalid email or password');
-        return;
-      }
-
-      localStorage.setItem(AUTH_KEY, JSON.stringify({ email: user.email, name: user.name }));
-      setIsAuthenticated(true);
-      setUseFirebase(false);
-      setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
     };
 
     const [resetEmailSent, setResetEmailSent] = useState(false);
@@ -433,8 +454,8 @@ function App() {
         return;
       }
 
-      // Update password
-      users[userIndex].password = resetPassword.newPassword;
+      // Update password (hashed)
+      users[userIndex].password = await hashPassword(resetPassword.newPassword);
       localStorage.setItem(USERS_KEY, JSON.stringify(users));
 
       // Show success message and redirect to sign in
@@ -893,10 +914,11 @@ function App() {
                   </div>
                   <button
                     type="submit"
-                    className="pressable w-full text-white font-bold py-3 rounded-xl transition-all"
+                    disabled={authSubmitting}
+                    className="pressable w-full text-white font-bold py-3 rounded-xl transition-all disabled:opacity-60"
                     style={{ background: 'var(--accent)' }}
                   >
-                    Sign Up
+                    {authSubmitting ? 'Signing Up...' : 'Sign Up'}
                   </button>
                   <div className="flex items-center gap-3 my-1">
                     <div className="flex-1 h-px" style={{ background: 'var(--divider)' }}></div>
@@ -906,7 +928,8 @@ function App() {
                   <button
                     type="button"
                     onClick={handleGoogleSignIn}
-                    className="pressable w-full font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-3"
+                    disabled={authSubmitting}
+                    className="pressable w-full font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-60"
                     style={{ background: 'var(--divider)', border: '1px solid var(--border-card)', color: 'var(--text-primary)' }}
                   >
                     <svg width="18" height="18" viewBox="0 0 48 48">
@@ -985,10 +1008,11 @@ function App() {
                   </div>
                   <button
                     type="submit"
-                    className="pressable w-full text-white font-bold py-3 rounded-xl transition-all"
+                    disabled={authSubmitting}
+                    className="pressable w-full text-white font-bold py-3 rounded-xl transition-all disabled:opacity-60"
                     style={{ background: 'var(--accent)' }}
                   >
-                    Sign In
+                    {authSubmitting ? 'Signing In...' : 'Sign In'}
                   </button>
                   <div className="flex items-center gap-3 my-1">
                     <div className="flex-1 h-px" style={{ background: 'var(--divider)' }}></div>
@@ -998,7 +1022,8 @@ function App() {
                   <button
                     type="button"
                     onClick={handleGoogleSignIn}
-                    className="pressable w-full font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-3"
+                    disabled={authSubmitting}
+                    className="pressable w-full font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-60"
                     style={{ background: 'var(--divider)', border: '1px solid var(--border-card)', color: 'var(--text-primary)' }}
                   >
                     <svg width="18" height="18" viewBox="0 0 48 48">
@@ -1377,7 +1402,7 @@ function App() {
         {/* Filter Bar */}
         <div className="px-4 mb-4">
           <div className="flex items-center gap-2">
-            <div className="flex-1 flex gap-2 overflow-x-auto no-scrollbar">
+            <div className="flex-1 flex gap-2 overflow-x-auto no-scrollbar" role="tablist" aria-label="Task filters">
               {[
                 { id: 'all', label: 'All' },
                 { id: 'pending', label: 'To Do' },
@@ -1387,6 +1412,8 @@ function App() {
                 <button
                   key={f.id}
                   onClick={() => setFilter(f.id)}
+                  role="tab"
+                  aria-selected={filter === f.id}
                   className="pressable filter-pill px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap"
                   style={{
                     background: filter === f.id ? 'var(--accent)' : 'var(--bg-card)',
@@ -1423,7 +1450,7 @@ function App() {
               placeholder="Search tasks..."
               value={searchQuery.trim() ? searchQuery : ''}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-enter w-full mt-2 rounded-xl px-4 py-2.5 text-sm outline-none"
+              className="search-enter w-full mt-2 rounded-xl px-4 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
               style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
               autoFocus
             />
@@ -1433,6 +1460,7 @@ function App() {
           {showFilterDropdown && (
             <div className="relative">
               <div className="popover-enter absolute right-0 top-2 rounded-xl py-1 z-30"
+                role="menu" aria-label="Sort options"
                 style={{ background: 'var(--bg-card)', border: '1px solid var(--border-elevated)', minWidth: 160 }}>
                 {[
                   { id: 'priority', label: 'Priority' },
@@ -1440,6 +1468,7 @@ function App() {
                   { id: 'progress', label: 'Progress' },
                 ].map(s => (
                   <button key={s.id}
+                    role="menuitem"
                     onClick={() => { setSortBy(s.id); setShowFilterDropdown(false); }}
                     className="pressable w-full text-left px-4 py-2 text-sm hover-bg"
                     style={{ color: sortBy === s.id ? 'var(--accent)' : 'var(--text-primary)' }}>
@@ -1491,7 +1520,7 @@ function App() {
         </div>
 
         {/* FAB */}
-        <button className="fab" onClick={() => setShowAdd(true)}>
+        <button className="fab" onClick={() => setShowAdd(true)} aria-label="Add new task">
           <Icon name="Plus" size={24} color="white" />
         </button>
 

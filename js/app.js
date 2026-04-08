@@ -1011,21 +1011,7 @@ function App() {
                     <span className="text-xs" style={{ color: 'var(--text-muted)' }}>or</span>
                     <div className="flex-1 h-px" style={{ background: 'var(--divider)' }}></div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleGoogleSignIn}
-                    disabled={authSubmitting}
-                    className="pressable w-full font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-60"
-                    style={{ background: 'var(--divider)', border: '1px solid var(--border-card)', color: 'var(--text-primary)' }}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 48 48">
-                      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                    </svg>
-                    Continue with Google
-                  </button>
+                  <GoogleSignInButton onClick={handleGoogleSignIn} />
                 </form>
               )}
 
@@ -1105,21 +1091,7 @@ function App() {
                     <span className="text-xs" style={{ color: 'var(--text-muted)' }}>or</span>
                     <div className="flex-1 h-px" style={{ background: 'var(--divider)' }}></div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleGoogleSignIn}
-                    disabled={authSubmitting}
-                    className="pressable w-full font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-60"
-                    style={{ background: 'var(--divider)', border: '1px solid var(--border-card)', color: 'var(--text-primary)' }}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 48 48">
-                      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                    </svg>
-                    Continue with Google
-                  </button>
+                  <GoogleSignInButton onClick={handleGoogleSignIn} />
                 </form>
               )}
 
@@ -1540,15 +1512,22 @@ function App() {
 
           {/* Search input */}
           {searchQuery !== '' && (
-            <input
-              type="text"
-              placeholder="Search tasks..."
-              value={searchQuery.trim() ? searchQuery : ''}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-enter w-full mt-2 rounded-xl px-4 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
-              style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
-              autoFocus
-            />
+            <>
+              <input
+                type="text"
+                placeholder="Search tasks..."
+                value={searchQuery.trim() ? searchQuery : ''}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-enter w-full mt-2 rounded-xl px-4 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
+                autoFocus
+              />
+              {searchQuery.trim() && (
+                <p className="text-xs mt-1 ml-1" style={{ color: 'var(--text-muted)' }}>
+                  Searching across all months
+                </p>
+              )}
+            </>
           )}
 
           {/* Sort dropdown */}

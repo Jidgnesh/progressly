@@ -22,6 +22,7 @@ interface HistoryPageProps {
   currentPage: Page;
   setCurrentPage: (page: Page) => void;
   trashCount: number;
+  onAddTask: () => void;
   expandedTask: number | null;
   setExpandedTask: (id: number | null) => void;
   expandedSubtask: number | null;
@@ -56,6 +57,7 @@ const HistoryPage = ({
   currentPage,
   setCurrentPage,
   trashCount,
+  onAddTask,
   expandedTask,
   setExpandedTask,
   expandedSubtask,
@@ -84,7 +86,7 @@ const HistoryPage = ({
   toastAction,
 }: HistoryPageProps) => {
   return (
-    <div key="history" className="page-content min-h-screen pb-24" style={{ background: 'var(--bg-base)' }}>
+    <div key="history" className="page-with-nav page-content min-h-screen pb-6" style={{ background: 'var(--bg-base)' }}>
       <Toast message={toast.message} type={toast.type} visible={toast.visible} onDismiss={onDismissToast} action={toastAction} />
 
       <div className="px-4 pt-6 pb-4">
@@ -153,7 +155,7 @@ const HistoryPage = ({
       {editingTask !== null && <EditTaskModal editForm={editForm} setEditForm={setEditForm} onSave={onSaveEdit} onCancel={() => setEditingTask(null)} />}
       {deleteConfirm !== null && taskToDelete && <DeleteConfirmModal task={taskToDelete} onCancel={() => setDeleteConfirm(null)} onConfirm={() => onMoveToTrash(deleteConfirm)} />}
 
-      <BottomNav currentPage={currentPage} setCurrentPage={setCurrentPage} trashCount={trashCount} />
+      <BottomNav currentPage={currentPage} setCurrentPage={setCurrentPage} trashCount={trashCount} onAddTask={onAddTask} />
     </div>
   );
 };

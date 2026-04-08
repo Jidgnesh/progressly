@@ -11,6 +11,7 @@ interface TrashPageProps {
   onRestore: (id: number) => void;
   onPermanentDelete: (id: number) => void;
   onEmptyTrash: () => void;
+  onAddTask: () => void;
   toast: ToastState;
   onDismissToast: () => void;
   toastAction?: ToastAction | null;
@@ -23,12 +24,13 @@ const TrashPage = ({
   onRestore,
   onPermanentDelete,
   onEmptyTrash,
+  onAddTask,
   toast,
   onDismissToast,
   toastAction,
 }: TrashPageProps) => {
   return (
-    <div key="trash" className="page-content min-h-screen pb-24" style={{ background: 'var(--bg-base)' }}>
+    <div key="trash" className="page-with-nav page-content min-h-screen pb-6" style={{ background: 'var(--bg-base)' }}>
       <Toast message={toast.message} type={toast.type} visible={toast.visible} onDismiss={onDismissToast} action={toastAction} />
 
       <div className="px-4 pt-6 pb-4">
@@ -82,7 +84,7 @@ const TrashPage = ({
         )}
       </div>
 
-      <BottomNav currentPage={currentPage} setCurrentPage={setCurrentPage} trashCount={trash.length} />
+      <BottomNav currentPage={currentPage} setCurrentPage={setCurrentPage} trashCount={trash.length} onAddTask={onAddTask} />
     </div>
   );
 };

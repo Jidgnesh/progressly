@@ -218,7 +218,7 @@ const HomePage = ({
   onCloseAll,
 }: HomePageProps) => {
   return (
-    <div key="home" className="page-content min-h-screen pb-24" style={{ background: 'var(--bg-base)' }}>
+    <div key="home" className="page-with-nav page-content min-h-screen pb-6" style={{ background: 'var(--bg-base)' }}>
       {/* Toast */}
       <Toast
         message={toast.message}
@@ -455,11 +455,6 @@ const HomePage = ({
         )}
       </div>
 
-      {/* FAB */}
-      <button className="fab" onClick={() => setShowAdd(true)} aria-label="Add new task">
-        <Plus size={24} color="white" />
-      </button>
-
       {/* Modals */}
       {showAdd && <AddTaskModal newTask={newTask} setNewTask={setNewTask} onAdd={onAddTask} onCancel={() => setShowAdd(false)} />}
       {editingTask !== null && <EditTaskModal editForm={editForm} setEditForm={setEditForm} onSave={onSaveEdit} onCancel={() => setEditingTask(null)} />}
@@ -502,7 +497,7 @@ const HomePage = ({
       )}
 
       {/* Bottom Nav */}
-      <BottomNav currentPage={currentPage} setCurrentPage={setCurrentPage} trashCount={trashCount} />
+      <BottomNav currentPage={currentPage} setCurrentPage={setCurrentPage} trashCount={trashCount} onAddTask={() => setShowAdd(true)} />
     </div>
   );
 };

@@ -345,6 +345,7 @@ const App = () => {
         onRestore={restoreFromTrash}
         onPermanentDelete={permanentDelete}
         onEmptyTrash={emptyTrash}
+        onAddTask={() => { setCurrentPage('home'); setShowAdd(true); }}
         toast={toast}
         onDismissToast={dismissToast}
       />
@@ -360,6 +361,7 @@ const App = () => {
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         trashCount={trash.length}
+        onAddTask={() => { setCurrentPage('home'); setShowAdd(true); }}
         expandedTask={expandedTask}
         setExpandedTask={setExpandedTask}
         expandedSubtask={expandedSubtask}
